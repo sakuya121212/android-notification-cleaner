@@ -1,0 +1,204 @@
+package com.example.notificationcleaner
+
+import com.example.notificationcleaner.data.AppFilterEntity
+import com.example.notificationcleaner.data.NotificationEntity
+import com.example.notificationcleaner.data.NotificationRepository
+import com.example.notificationcleaner.ui.NotificationViewModel
+import com.example.notificationcleaner.ui.formatTimestamp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class FakeNotificationRepository : NotificationRepository {
+    private val items = mutableListOf<NotificationEntity>()
+    private val flow = MutableStateFlow<List<NotificationEntity>>(emptyList())
+
+    private val filters = mutableMapOf<String, Boolean>()
+    private val filterFlow = MutableStateFlow<List<AppFilterEntity>>(emptyList())
+
+    override val allNotifications: Flow<List<NotificationEntity>> = flow
+    override val allAppFilters: Flow<List<AppFilterEntity>> = filterFlow
+
+    override suspend fun insert(notification: NotificationEntity): Long {
+        val id = if (notification.id == 0L) (items.size + 1).toLong() else notification.id
+        val newEntity = notification.copy(id = id)
+        items.removeAll { it.id == id || (it.key != null && it.key == notification.key) }
+        items.add(0, newEntity)
+        flow.value = items.toList()
+        return id
+    }
+
+    override suspend fun delete(notification: NotificationEntity) {
+        items.removeAll { it.id == notification.id }
+        flow.value = items.toList()
+    }
+
+    override suspend fun deleteById(id: Long) {
+        items.removeAll { it.id == id }
+        flow.value = items.toList()
+    }
+
+    override suspend fun deleteAll() {
+        items.clear()
+        flow.value = emptyList()
+    }
+
+    override suspend fun getCount(): Int = items.size
+
+    override suspend fun findByKey(key: String): NotificationEntity? {
+        return items.find { it.key == key }
+    }
+
+    override suspend fun getByPackageName(packageName: String): List<NotificationEntity> {
+        return items.filter { it.packageName == packageName }
+    }
+
+    override suspend fun deleteByPackageName(packageName: String) {
+        items.removeAll { it.packageName == packageName }
+        flow.value = items.toList()
+    }
+
+    override suspend fun isCleanEnabledForPackage(packageName: String): Boolean {
+        return filters[packageName] ?: true
+    }
+
+    override suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean) {
+        filters[packageName] = isEnabled
+        filterFlow.value = filters.map { AppFilterEntity(it.key, it.value) }
+    }
+
+    override suspend fun setAllCleanEnabled(packageNames: List<String>, isEnabled: Boolean) {
+        packageNames.forEach { filters[it] = isEnabled }
+        filterFlow.value = filters.map { AppFilterEntity(it.key, it.value) }
+    }
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class NotificationViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var repository: FakeNotificationRepository
+    private lateinit var viewModel: NotificationViewModel
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        repository = FakeNotificationRepository()
+        viewModel = NotificationViewModel(repository)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun notifications_initialState_isEmpty() = runTest {
+        val initialList = viewModel.notifications.first()
+        assertTrue(initialList.isEmpty())
+    }
+
+    @Test
+    fun insertAndObserveNotification() = runTest {
+        val entity = NotificationEntity(
+            packageName = "com.test.app",
+            appName = "Test App",
+            title = "Hello",
+            text = "World",
+            postTime = 1700000000000L,
+            key = "key1"
+        )
+        repository.insert(entity)
+        advanceUntilIdle()
+
+        val list = repository.allNotifications.first()
+        assertEquals(1, list.size)
+        assertEquals("Test App", list[0].appName)
+        assertEquals("Hello", list[0].title)
+    }
+
+    @Test
+    fun deleteNotification_removesItem() = runTest {
+        val entity = NotificationEntity(
+            id = 1L,
+            packageName = "com.test.app",
+            appName = "Test App",
+            title = "Hello",
+            text = "World",
+            postTime = 1700000000000L
+        )
+        repository.insert(entity)
+        advanceUntilIdle()
+
+        viewModel.deleteNotification(entity)
+        advanceUntilIdle()
+
+        val list = repository.allNotifications.first()
+        assertTrue(list.isEmpty())
+    }
+
+    @Test
+    fun clearAllNotifications_clearsAllItems() = runTest {
+        repository.insert(NotificationEntity(id = 1L, packageName = "a", title = "A", text = "a", postTime = 1L))
+        repository.insert(NotificationEntity(id = 2L, packageName = "b", title = "B", text = "b", postTime = 2L))
+        advanceUntilIdle()
+
+        assertEquals(2, repository.getCount())
+
+        viewModel.clearAllNotifications()
+        advanceUntilIdle()
+
+        assertEquals(0, repository.getCount())
+    }
+
+    @Test
+    fun formatTimestamp_formatsCorrectly() {
+        val formatted = formatTimestamp(1700000000000L)
+        assertNotNull(formatted)
+        assertTrue(formatted.isNotEmpty())
+    }
+
+    @Test
+    fun appFilter_defaultIsTrue_andCanBeToggled() = runTest {
+        val pkg = "com.example.chat"
+        // Default is true
+        assertTrue(repository.isCleanEnabledForPackage(pkg))
+
+        // Disable clean
+        repository.setCleanEnabled(pkg, false)
+        assertFalse(repository.isCleanEnabledForPackage(pkg))
+
+        // Re-enable clean
+        repository.setCleanEnabled(pkg, true)
+        assertTrue(repository.isCleanEnabledForPackage(pkg))
+    }
+
+    @Test
+    fun appFilter_setAllCleanEnabled_updatesAll() = runTest {
+        val packages = listOf("com.a", "com.b", "com.c")
+
+        repository.setAllCleanEnabled(packages, false)
+        packages.forEach {
+            assertFalse(repository.isCleanEnabledForPackage(it))
+        }
+
+        repository.setAllCleanEnabled(packages, true)
+        packages.forEach {
+            assertTrue(repository.isCleanEnabledForPackage(it))
+        }
+    }
+}
