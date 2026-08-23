@@ -14,6 +14,7 @@ interface NotificationRepository {
     suspend fun findByKey(key: String): NotificationEntity?
     suspend fun getByPackageName(packageName: String): List<NotificationEntity>
     suspend fun deleteByPackageName(packageName: String)
+    suspend fun trimHistory(cutoffTime: Long, maxEntries: Int)
 
     suspend fun isCleanEnabledForPackage(packageName: String): Boolean
     suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean)
@@ -59,17 +60,29 @@ class NotificationRepositoryImpl(
         notificationDao.deleteByPackageName(packageName)
     }
 
+    override suspend fun trimHistory(cutoffTime: Long, maxEntries: Int) {
+        notificationDao.deleteOlderThan(cutoffTime)
+        notificationDao.deleteExceedingLimit(maxEntries)
+    }
+
     override suspend fun isCleanEnabledForPackage(packageName: String): Boolean {
-        // Defaults to true if no explicit user preference is recorded
-        return appFilterDao.isCleanEnabled(packageName) ?: true
+        // Opt in only: an app is never cleaned until the user enables it.
+        return appFilterDao.isCleanEnabled(packageName) ?: false
     }
 
     override suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean) {
         appFilterDao.insert(AppFilterEntity(packageName = packageName, isCleanEnabled = isEnabled))
+        if (!isEnabled) {
+            // Disabling an app also removes any previously retained private content.
+            notificationDao.deleteByPackageName(packageName)
+        }
     }
 
     override suspend fun setAllCleanEnabled(packageNames: List<String>, isEnabled: Boolean) {
         val filters = packageNames.map { AppFilterEntity(packageName = it, isCleanEnabled = isEnabled) }
         appFilterDao.insertAll(filters)
+        if (!isEnabled) {
+            notificationDao.deleteAll()
+        }
     }
 }

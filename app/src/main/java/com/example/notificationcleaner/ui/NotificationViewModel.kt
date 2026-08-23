@@ -12,6 +12,8 @@ import com.example.notificationcleaner.data.NotificationRepository
 import com.example.notificationcleaner.service.MyNotificationListenerService
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,13 +31,16 @@ class NotificationViewModel(
         repository.allAppFilters
     ) { notifications, filters ->
         val enabledByPackage = filters.associate { it.packageName to it.isCleanEnabled }
-        notifications.filter { enabledByPackage[it.packageName] ?: true }
+        notifications.filter { enabledByPackage[it.packageName] ?: false }
     }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val messages: SharedFlow<String> = _messages
 
     fun deleteNotification(notification: NotificationEntity) {
         viewModelScope.launch {
@@ -56,7 +61,8 @@ class NotificationViewModel(
         context.packageManager.getLaunchIntentForPackage(notification.packageName)?.let { intent ->
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        }
+            _messages.tryEmit("元の通知を開けないため、アプリを開きました。")
+        } ?: _messages.tryEmit("この通知のアプリを開けませんでした。")
     }
 
     fun clearAllNotifications() {

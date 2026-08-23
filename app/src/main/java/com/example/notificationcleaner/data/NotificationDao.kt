@@ -33,6 +33,12 @@ interface NotificationDao {
     @Query("DELETE FROM notifications WHERE packageName = :packageName")
     suspend fun deleteByPackageName(packageName: String)
 
+    @Query("DELETE FROM notifications WHERE postTime < :cutoffTime")
+    suspend fun deleteOlderThan(cutoffTime: Long)
+
+    @Query("DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY postTime DESC LIMIT -1 OFFSET :limit)")
+    suspend fun deleteExceedingLimit(limit: Int)
+
     @Query("DELETE FROM notifications")
     suspend fun deleteAll()
 }

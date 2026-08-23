@@ -68,7 +68,7 @@ class SettingsViewModel(
                 AppFilterItem(
                     packageName = pkg,
                     appName = name,
-                    isCleanEnabled = filterMap[pkg] ?: true
+                    isCleanEnabled = filterMap[pkg] ?: false
                 )
             }
             .filter { item ->

@@ -39,6 +39,8 @@ class MyNotificationListenerService : NotificationListenerService() {
 
     private val channelId = "cleaner_channel"
     private val summaryNotificationId = 1001
+    private val historyRetentionMillis = 30L * 24 * 60 * 60 * 1000
+    private val maxHistoryEntries = 500
 
     override fun onCreate() {
         super.onCreate()
@@ -85,6 +87,9 @@ class MyNotificationListenerService : NotificationListenerService() {
         val packageName = sbn.packageName
         if (packageName == applicationContext.packageName) return
 
+        // Do not hide source notifications when the user cannot see the summary.
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
+
         // Skip ongoing or important notifications (calls, alarms, nav, etc.)
         if (shouldSkipNotification(sbn)) {
             Log.d(TAG, "Skipping important/ongoing notification from $packageName")
@@ -112,7 +117,7 @@ class MyNotificationListenerService : NotificationListenerService() {
 
         // Retain the original action while this process is alive so tapping an
         // item in the cleaner can behave like tapping the source notification.
-        sbn.notification.contentIntent?.let { originalContentIntents[notificationKey] = it }
+        sbn.notification.contentIntent?.let { retainOriginalContentIntent(notificationKey, it) }
             ?: originalContentIntents.remove(notificationKey)
 
         // Intercept and cancel clearable notification.
@@ -129,6 +134,10 @@ class MyNotificationListenerService : NotificationListenerService() {
             key = notificationKey
         )
         repository.insert(entity)
+        repository.trimHistory(
+            cutoffTime = System.currentTimeMillis() - historyRetentionMillis,
+            maxEntries = maxHistoryEntries
+        )
         updateSummaryNotification()
     }
 
@@ -263,7 +272,17 @@ class MyNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "MyNotificationListener"
+        private const val MAX_RETAINED_CONTENT_INTENTS = 500
         private val originalContentIntents = ConcurrentHashMap<String, PendingIntent>()
+
+        private fun retainOriginalContentIntent(key: String, intent: PendingIntent) {
+            originalContentIntents[key] = intent
+            if (originalContentIntents.size > MAX_RETAINED_CONTENT_INTENTS) {
+                originalContentIntents.keys
+                    .take(originalContentIntents.size - MAX_RETAINED_CONTENT_INTENTS)
+                    .forEach { key -> originalContentIntents.remove(key) }
+            }
+        }
 
         fun sendOriginalContentIntent(notificationKey: String?): Boolean {
             val pendingIntent = notificationKey?.let(originalContentIntents::get) ?: return false

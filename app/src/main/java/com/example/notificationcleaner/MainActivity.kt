@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.notificationcleaner.data.AppDatabase
 import com.example.notificationcleaner.data.NotificationRepositoryImpl
 import com.example.notificationcleaner.ui.AppNavigation
-import com.example.notificationcleaner.ui.isNotificationServiceEnabled
+import com.example.notificationcleaner.ui.isNotificationCleanerReady
 import com.example.notificationcleaner.ui.theme.NotificationCleanerTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             NotificationCleanerTheme {
                 var isPermissionGranted by remember {
-                    mutableStateOf(isNotificationServiceEnabled(this))
+                    mutableStateOf(isNotificationCleanerReady(this))
                 }
 
                 // Refresh permission state when activity resumes
@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
                 remember(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            isPermissionGranted = isNotificationServiceEnabled(this)
+                            isPermissionGranted = isNotificationCleanerReady(this)
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.notificationcleaner.data.NotificationEntity
+import kotlinx.coroutines.flow.collect
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -39,6 +40,13 @@ fun NotificationLogScreen(
 ) {
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     var showClearDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     if (showClearDialog) {
         AlertDialog(
@@ -68,7 +76,8 @@ fun NotificationLogScreen(
         onNotificationClick = viewModel::openNotification,
         onDeleteNotification = viewModel::deleteNotification,
         onClearAll = { showClearDialog = true },
-        onNavigateToSettings = onNavigateToSettings
+        onNavigateToSettings = onNavigateToSettings,
+        snackbarHostState = snackbarHostState
     )
 }
 
@@ -79,9 +88,11 @@ fun NotificationListPane(
     onNotificationClick: (NotificationEntity) -> Unit,
     onDeleteNotification: (NotificationEntity) -> Unit,
     onClearAll: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -226,7 +237,7 @@ fun NotificationListPane(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "新しい不要な通知が届くと、ここにまとめられます ✨",
+                            text = "自動クリーンするアプリは、右上の設定から選択できます。",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center

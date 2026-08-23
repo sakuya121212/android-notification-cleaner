@@ -70,8 +70,8 @@ fun PermissionScreen(
         }
     }
 
-    LaunchedEffect(isListenerGranted) {
-        if (isListenerGranted) {
+    LaunchedEffect(isListenerGranted, isPostNotificationGranted) {
+        if (isListenerGranted && isPostNotificationGranted) {
             onPermissionGranted()
         }
     }
@@ -186,14 +186,14 @@ fun PermissionOnboarding(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "2. 通知の送信 (推奨)",
+                    text = "2. 通知の送信 (必須)",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "クリーンした通知のまとめを通知バーに 1 つ表示するために必要です。",
+                    text = "元の通知を消去せず、安全にまとめを表示するために必要です。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -214,4 +214,10 @@ fun PermissionOnboarding(
 fun isNotificationServiceEnabled(context: Context): Boolean {
     val packageNames = NotificationManagerCompat.getEnabledListenerPackages(context)
     return packageNames.contains(context.packageName)
+}
+
+fun isNotificationCleanerReady(context: Context): Boolean {
+    val canPostNotifications = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
+    return isNotificationServiceEnabled(context) && canPostNotifications
 }

@@ -72,17 +72,32 @@ class FakeNotificationRepository : NotificationRepository {
         flow.value = items.toList()
     }
 
+    override suspend fun trimHistory(cutoffTime: Long, maxEntries: Int) {
+        items.removeAll { it.postTime < cutoffTime }
+        val retained = items.sortedByDescending { it.postTime }.take(maxEntries)
+        items.retainAll(retained)
+        flow.value = items.toList()
+    }
+
     override suspend fun isCleanEnabledForPackage(packageName: String): Boolean {
-        return filters[packageName] ?: true
+        return filters[packageName] ?: false
     }
 
     override suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean) {
         filters[packageName] = isEnabled
+        if (!isEnabled) {
+            items.removeAll { it.packageName == packageName }
+            flow.value = items.toList()
+        }
         filterFlow.value = filters.map { AppFilterEntity(it.key, it.value) }
     }
 
     override suspend fun setAllCleanEnabled(packageNames: List<String>, isEnabled: Boolean) {
         packageNames.forEach { filters[it] = isEnabled }
+        if (!isEnabled) {
+            items.clear()
+            flow.value = emptyList()
+        }
         filterFlow.value = filters.map { AppFilterEntity(it.key, it.value) }
     }
 }
@@ -173,16 +188,13 @@ class NotificationViewModelTest {
     }
 
     @Test
-    fun appFilter_defaultIsTrue_andCanBeToggled() = runTest {
+    fun appFilter_defaultIsFalse_andCanBeToggled() = runTest {
         val pkg = "com.example.chat"
-        // Default is true
-        assertTrue(repository.isCleanEnabledForPackage(pkg))
-
-        // Disable clean
+        // Production defaults to false; the fake starts empty as well.
         repository.setCleanEnabled(pkg, false)
         assertFalse(repository.isCleanEnabledForPackage(pkg))
 
-        // Re-enable clean
+        // Enable clean
         repository.setCleanEnabled(pkg, true)
         assertTrue(repository.isCleanEnabledForPackage(pkg))
     }
