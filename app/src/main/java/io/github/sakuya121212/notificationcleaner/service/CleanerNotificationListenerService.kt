@@ -177,10 +177,24 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Use the newest source app as the primary icon. Android only permits one
+        // large icon on a notification, while the custom view below previews up to
+        // three of the apps represented in the aggregated notifications.
+        val previewIcons = recentNotificationPreviews.mapNotNull { notification ->
+            applicationIconBitmap(notification.packageName)
+        }
+        val primaryIcon = previewIcons.firstOrNull()
+
         val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
             setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
             setTextViewText(R.id.notification_count_text, getString(R.string.summary_notification_count, count))
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
+
+            primaryIcon?.let { icon ->
+                // This is the icon shown at the leading edge of the collapsed
+                // summary notification.
+                setImageViewBitmap(R.id.notification_app_icon, icon)
+            }
 
             // Reset icon preview visibilities
             setViewVisibility(R.id.icon_preview_1, View.GONE)
@@ -189,16 +203,9 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             setViewVisibility(R.id.icon_preview_more, View.GONE)
 
             val iconViewIds = listOf(R.id.icon_preview_1, R.id.icon_preview_2, R.id.icon_preview_3)
-            recentNotificationPreviews.forEachIndexed { index, entity ->
-                if (index < iconViewIds.size) {
-                    try {
-                        val icon = packageManager.getApplicationIcon(entity.packageName)
-                        val bitmap = drawableToBitmap(icon)
-                        setImageViewBitmap(iconViewIds[index], bitmap)
-                        setViewVisibility(iconViewIds[index], View.VISIBLE)
-                    } catch (_: Exception) {
-                    }
-                }
+            previewIcons.take(iconViewIds.size).forEachIndexed { index, icon ->
+                setImageViewBitmap(iconViewIds[index], icon)
+                setViewVisibility(iconViewIds[index], View.VISIBLE)
             }
 
             if (count > 3) {
@@ -211,6 +218,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(remoteViews)
             .setCustomBigContentView(remoteViews)
+            .setLargeIcon(primaryIcon)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -234,6 +242,15 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         return bitmap
+    }
+
+    private fun applicationIconBitmap(packageName: String): Bitmap? = try {
+        drawableToBitmap(packageManager.getApplicationIcon(packageName))
+    } catch (_: PackageManager.NameNotFoundException) {
+        null
+    } catch (_: RuntimeException) {
+        // A package can disappear while its retained notification is still in Room.
+        null
     }
 
     private fun createNotificationChannel() {
