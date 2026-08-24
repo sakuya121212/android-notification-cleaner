@@ -461,14 +461,13 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun formatTimestamp(timestamp: Long, nowMillis: Long = System.currentTimeMillis()): String {
-    val context = LocalContext.current
     return formatTimestamp(
         timestamp = timestamp,
         nowMillis = nowMillis,
         justNow = stringResource(R.string.timestamp_just_now),
-        minutesAgo = { context.getString(R.string.timestamp_minutes_ago, it) },
-        hoursAgo = { context.getString(R.string.timestamp_hours_ago, it) },
-        daysAgo = { context.getString(R.string.timestamp_days_ago, it) }
+        minutesAgoFormat = stringResource(R.string.timestamp_minutes_ago),
+        hoursAgoFormat = stringResource(R.string.timestamp_hours_ago),
+        daysAgoFormat = stringResource(R.string.timestamp_days_ago)
     )
 }
 
@@ -476,16 +475,16 @@ fun formatTimestamp(
     timestamp: Long,
     nowMillis: Long,
     justNow: String,
-    minutesAgo: (Long) -> String,
-    hoursAgo: (Long) -> String,
-    daysAgo: (Long) -> String
+    minutesAgoFormat: String,
+    hoursAgoFormat: String,
+    daysAgoFormat: String
 ): String {
     val elapsed = (nowMillis - timestamp).coerceAtLeast(0L)
     return when {
         elapsed < 60_000L -> justNow
-        elapsed < 60 * 60_000L -> minutesAgo(elapsed / 60_000L)
-        elapsed < 24 * 60 * 60_000L -> hoursAgo(elapsed / (60 * 60_000L))
-        elapsed < 7 * 24 * 60 * 60_000L -> daysAgo(elapsed / (24 * 60 * 60_000L))
+        elapsed < 60 * 60_000L -> String.format(Locale.getDefault(), minutesAgoFormat, elapsed / 60_000L)
+        elapsed < 24 * 60 * 60_000L -> String.format(Locale.getDefault(), hoursAgoFormat, elapsed / (60 * 60_000L))
+        elapsed < 7 * 24 * 60 * 60_000L -> String.format(Locale.getDefault(), daysAgoFormat, elapsed / (24 * 60 * 60_000L))
         else -> try {
             val instant = Instant.ofEpochMilli(timestamp)
             TIMESTAMP_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))

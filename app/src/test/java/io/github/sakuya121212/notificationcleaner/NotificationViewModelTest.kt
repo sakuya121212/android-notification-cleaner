@@ -37,7 +37,7 @@ class FakeNotificationRepository : NotificationRepository {
     override suspend fun insert(notification: NotificationEntity): Long {
         val id = if (notification.id == 0L) (items.size + 1).toLong() else notification.id
         val newEntity = notification.copy(id = id)
-        items.removeAll { it.id == id || (it.key != null && it.key == notification.key) }
+        items.removeAll { it.id == id || it.key == notification.key }
         items.add(0, newEntity)
         flow.value = items.toList()
         return id
@@ -180,7 +180,7 @@ class NotificationViewModelTest {
 
     @Test
     fun formatTimestamp_formatsCorrectly() {
-        val formatted = formatTimestamp(1700000000000L, 1700000300000L, "たった今", { "${it}分前" }, { "${it}時間前" }, { "${it}日前" })
+        val formatted = formatTimestamp(1700000000000L, 1700000300000L, "たった今", "%1\$d分前", "%1\$d時間前", "%1\$d日前")
         assertEquals("5分前", formatted)
     }
 
