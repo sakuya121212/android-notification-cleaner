@@ -26,6 +26,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import io.github.sakuya121212.notificationcleaner.R
 import io.github.sakuya121212.notificationcleaner.data.NotificationEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -423,10 +425,12 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
     var iconDrawable by remember(packageName) { mutableStateOf<Drawable?>(null) }
 
     LaunchedEffect(packageName) {
-        iconDrawable = try {
-            context.packageManager.getApplicationIcon(packageName)
-        } catch (_: PackageManager.NameNotFoundException) {
-            null
+        iconDrawable = withContext(Dispatchers.IO) {
+            try {
+                context.packageManager.getApplicationIcon(packageName)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
         }
     }
 
@@ -455,13 +459,33 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
 }
 
 
+@Composable
 fun formatTimestamp(timestamp: Long, nowMillis: Long = System.currentTimeMillis()): String {
+    val context = LocalContext.current
+    return formatTimestamp(
+        timestamp = timestamp,
+        nowMillis = nowMillis,
+        justNow = stringResource(R.string.timestamp_just_now),
+        minutesAgo = { context.getString(R.string.timestamp_minutes_ago, it) },
+        hoursAgo = { context.getString(R.string.timestamp_hours_ago, it) },
+        daysAgo = { context.getString(R.string.timestamp_days_ago, it) }
+    )
+}
+
+fun formatTimestamp(
+    timestamp: Long,
+    nowMillis: Long,
+    justNow: String,
+    minutesAgo: (Long) -> String,
+    hoursAgo: (Long) -> String,
+    daysAgo: (Long) -> String
+): String {
     val elapsed = (nowMillis - timestamp).coerceAtLeast(0L)
     return when {
-        elapsed < 60_000L -> "たった今"
-        elapsed < 60 * 60_000L -> "${elapsed / 60_000L}分前"
-        elapsed < 24 * 60 * 60_000L -> "${elapsed / (60 * 60_000L)}時間前"
-        elapsed < 7 * 24 * 60 * 60_000L -> "${elapsed / (24 * 60 * 60_000L)}日前"
+        elapsed < 60_000L -> justNow
+        elapsed < 60 * 60_000L -> minutesAgo(elapsed / 60_000L)
+        elapsed < 24 * 60 * 60_000L -> hoursAgo(elapsed / (60 * 60_000L))
+        elapsed < 7 * 24 * 60 * 60_000L -> daysAgo(elapsed / (24 * 60 * 60_000L))
         else -> try {
             val instant = Instant.ofEpochMilli(timestamp)
             TIMESTAMP_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))

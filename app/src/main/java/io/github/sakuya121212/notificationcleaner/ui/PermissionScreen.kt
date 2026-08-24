@@ -1,6 +1,7 @@
 package io.github.sakuya121212.notificationcleaner.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import io.github.sakuya121212.notificationcleaner.R
 import androidx.compose.ui.text.font.FontWeight
@@ -46,12 +49,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @Composable
 fun PermissionScreen(
     onPermissionGranted: () -> Unit,
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val activity = context as? Activity
     var isListenerGranted by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isPostNotificationGranted by remember {
         mutableStateOf(
@@ -71,6 +78,18 @@ fun PermissionScreen(
         isPostNotificationGranted = isGranted
     }
 
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isListenerGranted = isNotificationServiceEnabled(context)
+                isPostNotificationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    NotificationManagerCompat.from(context).areNotificationsEnabled()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(isListenerGranted, isPostNotificationGranted) {
         if (isListenerGranted && isPostNotificationGranted) {
             onPermissionGranted()
@@ -86,8 +105,8 @@ fun PermissionScreen(
         },
         onRequestPostNotification = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (hasRequestedPostNotification && !ActivityCompat.shouldShowRequestPermissionRationale(
-                        context as android.app.Activity, Manifest.permission.POST_NOTIFICATIONS
+                if (hasRequestedPostNotification && activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(
+                        activity, Manifest.permission.POST_NOTIFICATIONS
                     )
                 ) {
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -99,8 +118,8 @@ fun PermissionScreen(
             }
         },
         isPostNotificationPermanentlyDenied = hasRequestedPostNotification && !isPostNotificationGranted &&
-            !ActivityCompat.shouldShowRequestPermissionRationale(
-                context as android.app.Activity, Manifest.permission.POST_NOTIFICATIONS
+            activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(
+                activity, Manifest.permission.POST_NOTIFICATIONS
             )
     )
 }

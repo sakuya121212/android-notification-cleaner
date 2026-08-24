@@ -16,5 +16,9 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Run Android lint
+        run: bash gradlew lintDebug --no-daemon
+      - name: Assemble debug APK
+        run: bash gradlew assembleDebug --no-daemon
       - name: Run unit tests
         run: bash gradlew testDebugUnitTest --no-daemon

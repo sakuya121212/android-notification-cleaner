@@ -47,4 +47,8 @@
     <string name="post_notification_permission_action">通知の送信を許可する</string>
     <string name="post_notification_permission_settings_description">通知の送信が許可されていません。アプリ情報で「通知を許可」をオンにしてください。</string>
     <string name="post_notification_permission_settings_action">アプリ情報を開く</string>
+    <string name="timestamp_just_now">たった今</string>
+    <string name="timestamp_minutes_ago">%1$d分前</string>
+    <string name="timestamp_hours_ago">%1$d時間前</string>
+    <string name="timestamp_days_ago">%1$d日前</string>
 </resources>

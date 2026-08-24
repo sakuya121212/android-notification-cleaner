@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "io.github.sakuya121212.notificationcleaner"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 

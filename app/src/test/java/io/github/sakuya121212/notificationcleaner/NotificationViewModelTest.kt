@@ -128,10 +128,10 @@ class NotificationViewModelTest {
     @Test
     fun notifications_excludesDisabledAppsWhileKeepingTheirHistory() = runTest {
         val disabled = NotificationEntity(
-            id = 1L, packageName = "com.example.disabled", title = "Hidden", text = null, postTime = 1L
+            id = 1L, packageName = "com.example.disabled", title = "Hidden", text = null, postTime = 1L, key = "disabled"
         )
         val enabled = NotificationEntity(
-            id = 2L, packageName = "com.example.enabled", title = "Visible", text = null, postTime = 2L
+            id = 2L, packageName = "com.example.enabled", title = "Visible", text = null, postTime = 2L, key = "enabled"
         )
 
         repository.insert(disabled)
@@ -151,7 +151,8 @@ class NotificationViewModelTest {
             appName = "Test App",
             title = "Hello",
             text = "World",
-            postTime = 1700000000000L
+            postTime = 1700000000000L,
+            key = "delete-test"
         )
         repository.insert(entity)
         advanceUntilIdle()
@@ -165,8 +166,8 @@ class NotificationViewModelTest {
 
     @Test
     fun clearAllNotifications_clearsAllItems() = runTest {
-        repository.insert(NotificationEntity(id = 1L, packageName = "a", title = "A", text = "a", postTime = 1L))
-        repository.insert(NotificationEntity(id = 2L, packageName = "b", title = "B", text = "b", postTime = 2L))
+        repository.insert(NotificationEntity(id = 1L, packageName = "a", title = "A", text = "a", postTime = 1L, key = "clear-a"))
+        repository.insert(NotificationEntity(id = 2L, packageName = "b", title = "B", text = "b", postTime = 2L, key = "clear-b"))
         advanceUntilIdle()
 
         assertEquals(2, repository.getCount())
@@ -179,7 +180,7 @@ class NotificationViewModelTest {
 
     @Test
     fun formatTimestamp_formatsCorrectly() {
-        val formatted = formatTimestamp(1700000000000L, nowMillis = 1700000300000L)
+        val formatted = formatTimestamp(1700000000000L, 1700000300000L, "たった今", { "${it}分前" }, { "${it}時間前" }, { "${it}日前" })
         assertEquals("5分前", formatted)
     }
 

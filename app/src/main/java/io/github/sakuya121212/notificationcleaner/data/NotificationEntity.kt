@@ -18,5 +18,5 @@ data class NotificationEntity(
     val title: String?,
     val text: String?,
     val postTime: Long,
-    val key: String? = null
+    val key: String
 ) : Parcelable

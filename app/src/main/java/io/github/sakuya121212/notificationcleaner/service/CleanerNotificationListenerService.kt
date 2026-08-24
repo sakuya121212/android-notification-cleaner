@@ -94,6 +94,11 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             return
         }
 
+        if (!repository.isCleanEnabledForPackage(packageName)) {
+            Log.d(TAG, "Auto-clean disabled for $packageName, skipping.")
+            return
+        }
+
         val extras = sbn.notification.extras
         val title = extras.getString("android.title")
             ?: extras.getCharSequence("android.title")?.toString()
@@ -108,10 +113,6 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             null
         }
 
-        if (!repository.isCleanEnabledForPackage(packageName)) {
-            Log.d(TAG, "Auto-clean disabled for $packageName, skipping.")
-            return
-        }
 
         val existing = repository.findByKey(notificationKey)
         val entity = NotificationEntity(
