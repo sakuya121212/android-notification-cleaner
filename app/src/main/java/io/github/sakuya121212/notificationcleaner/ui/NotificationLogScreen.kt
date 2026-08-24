@@ -304,7 +304,10 @@ private fun SwipeToDeleteNotification(
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
+            if (
+                value == SwipeToDismissBoxValue.StartToEnd ||
+                value == SwipeToDismissBoxValue.EndToStart
+            ) {
                 onDelete()
             }
             // The database update removes the row; keeping the state settled avoids
@@ -320,17 +323,24 @@ private fun SwipeToDeleteNotification(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.CenterEnd
+                contentAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+                    Alignment.CenterStart
+                } else {
+                    Alignment.CenterEnd
+                }
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
                     contentDescription = stringResource(R.string.content_description_delete_notification),
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(end = 24.dp)
+                    modifier = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+                        Modifier.padding(start = 24.dp)
+                    } else {
+                        Modifier.padding(end = 24.dp)
+                    }
                 )
             }
         },
-        enableDismissFromStartToEnd = false,
         content = {
             NotificationCardItem(notification = notification, onClick = onClick)
         }
