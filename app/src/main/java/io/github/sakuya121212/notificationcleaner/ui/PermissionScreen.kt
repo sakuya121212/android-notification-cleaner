@@ -3,6 +3,7 @@ package io.github.sakuya121212.notificationcleaner.ui
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ActivityCompat
 
 @Composable
 fun PermissionScreen(
@@ -60,16 +63,12 @@ fun PermissionScreen(
         )
     }
 
+    var hasRequestedPostNotification by rememberSaveable { mutableStateOf(false) }
     val postNotificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        hasRequestedPostNotification = true
         isPostNotificationGranted = isGranted
-    }
-
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !isPostNotificationGranted) {
-            postNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
     }
 
     LaunchedEffect(isListenerGranted, isPostNotificationGranted) {
@@ -87,9 +86,22 @@ fun PermissionScreen(
         },
         onRequestPostNotification = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                postNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (hasRequestedPostNotification && !ActivityCompat.shouldShowRequestPermissionRationale(
+                        context as android.app.Activity, Manifest.permission.POST_NOTIFICATIONS
+                    )
+                ) {
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    })
+                } else {
+                    postNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
-        }
+        },
+        isPostNotificationPermanentlyDenied = hasRequestedPostNotification && !isPostNotificationGranted &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(
+                context as android.app.Activity, Manifest.permission.POST_NOTIFICATIONS
+            )
     )
 }
 
@@ -98,7 +110,8 @@ fun PermissionOnboarding(
     isListenerGranted: Boolean,
     isPostNotificationGranted: Boolean,
     onOpenListenerSettings: () -> Unit,
-    onRequestPostNotification: () -> Unit
+    onRequestPostNotification: () -> Unit,
+    isPostNotificationPermanentlyDenied: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -195,7 +208,9 @@ fun PermissionOnboarding(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                    text = stringResource(R.string.post_notification_permission_description),
+                        text = stringResource(if (isPostNotificationPermanentlyDenied) {
+                            R.string.post_notification_permission_settings_description
+                        } else R.string.post_notification_permission_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -205,7 +220,9 @@ fun PermissionOnboarding(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(stringResource(R.string.post_notification_permission_action), fontWeight = FontWeight.Bold)
+                        Text(stringResource(if (isPostNotificationPermanentlyDenied) {
+                            R.string.post_notification_permission_settings_action
+                        } else R.string.post_notification_permission_action), fontWeight = FontWeight.Bold)
                     }
                 }
             }

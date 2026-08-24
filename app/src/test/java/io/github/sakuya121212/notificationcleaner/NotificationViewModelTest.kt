@@ -179,9 +179,8 @@ class NotificationViewModelTest {
 
     @Test
     fun formatTimestamp_formatsCorrectly() {
-        val formatted = formatTimestamp(1700000000000L)
-        assertNotNull(formatted)
-        assertTrue(formatted.isNotEmpty())
+        val formatted = formatTimestamp(1700000000000L, nowMillis = 1700000300000L)
+        assertEquals("5分前", formatted)
     }
 
     @Test

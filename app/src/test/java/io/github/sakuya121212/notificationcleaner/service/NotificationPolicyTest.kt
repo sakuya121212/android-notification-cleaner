@@ -1,11 +1,19 @@
 package io.github.sakuya121212.notificationcleaner.service
 
 import android.app.Notification
+import android.app.NotificationManager
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotificationPolicyTest {
+    @Test
+    fun summaryChannelEnabled_rejectsBlockedChannel() {
+        assertFalse(isSummaryChannelEnabled(NotificationManager.IMPORTANCE_NONE))
+        assertTrue(isSummaryChannelEnabled(NotificationManager.IMPORTANCE_LOW))
+        assertFalse(isSummaryChannelEnabled(null))
+    }
+
     @Test
     fun shouldSkipNotification_preservesOngoingAndNonClearableNotifications() {
         assertTrue(shouldSkipNotification(isOngoing = true, isClearable = true, category = null))

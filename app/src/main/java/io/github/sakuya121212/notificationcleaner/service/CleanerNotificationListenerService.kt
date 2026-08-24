@@ -12,7 +12,6 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.text.Html
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -86,7 +85,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         if (packageName == applicationContext.packageName) return
 
         // Do not hide source notifications when the user cannot see the summary.
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
+        // The app-level switch can be on while this specific channel is off.
+        if (!canPostSummaryNotifications()) return
 
         // Skip ongoing or important notifications (calls, alarms, nav, etc.)
         if (shouldSkipNotification(sbn)) {
@@ -146,8 +146,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
     }
 
     private suspend fun updateSummaryNotification() {
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
-            Log.w(TAG, "Notification permission not granted, skipping summary notification.")
+        if (!canPostSummaryNotifications()) {
+            Log.w(TAG, "Summary notification channel is unavailable, skipping summary notification.")
             return
         }
 
@@ -175,11 +175,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
 
         val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
             setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
-            val formattedCount = Html.fromHtml(
-                getString(R.string.summary_notification_count_html, count),
-                Html.FROM_HTML_MODE_LEGACY
-            )
-            setTextViewText(R.id.notification_count_text, formattedCount)
+            setTextViewText(R.id.notification_count_text, getString(R.string.summary_notification_count, count))
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
 
             // Reset icon preview visibilities
@@ -246,7 +242,14 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         val notificationManager: NotificationManager =
             getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+    }
 
+    /** A disabled channel suppresses the summary even when the app-level switch is on. */
+    private fun canPostSummaryNotifications(): Boolean {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        return isSummaryChannelEnabled(notificationManager.getNotificationChannel(channelId)?.importance)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
@@ -308,4 +311,9 @@ internal fun shouldSkipNotification(
         Notification.CATEGORY_NAVIGATION,
         Notification.CATEGORY_SYSTEM
     )
+}
+
+/** Visible to local unit tests; only IMPORTANCE_NONE means the user blocked the channel. */
+internal fun isSummaryChannelEnabled(importance: Int?): Boolean {
+    return importance != null && importance != NotificationManager.IMPORTANCE_NONE
 }

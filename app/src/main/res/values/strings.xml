@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name">NotificationCleaner</string>
-    <string name="notification_channel_name">NCleaner</string>
+    <string name="notification_channel_name">NotificationCleaner</string>
     <string name="notification_channel_description">通知をまとめて表示します</string>
-    <string name="summary_notification_title">NCleaner</string>
+    <string name="summary_notification_title">NotificationCleaner</string>
     <string name="summary_notification_icon_description">通知クリーナー</string>
-    <string name="summary_notification_count_default">ジャンク通知: 0</string>
-    <string name="summary_notification_count_html">ジャンク通知: &lt;font color=&quot;#FF5252&quot;&gt;&lt;b&gt;%1$d&lt;/b&gt;&lt;/font&gt;</string>
+    <string name="summary_notification_count_default">クリーンした通知: 0件</string>
+    <string name="summary_notification_count">クリーンした通知: %1$d件</string>
     <string name="action_open">開く</string>
     <string name="message_opened_source_app">元の通知を開けないため、アプリを開きました。</string>
     <string name="message_cannot_open_source_app">この通知のアプリを開けませんでした。</string>
@@ -27,6 +27,10 @@
     <string name="enable_all_apps">すべてのアプリを有効化</string>
     <string name="disable_all_apps">すべてのアプリを無効化</string>
     <string name="settings_description">通知を自動的にクリーン（消去・まとめ）するアプリを選択してください。</string>
+    <string name="settings_action_limitation">返信などの通知アクションは引き継がれません。メッセージアプリは必要に応じて個別に有効化してください。</string>
+    <string name="enable_all_apps_dialog_title">すべてのアプリを有効化しますか？</string>
+    <string name="enable_all_apps_dialog_message">メッセージアプリを含む、すべてのアプリの通知が自動クリーンの対象になります。</string>
+    <string name="enable_all_apps_dialog_confirm">すべて有効化</string>
     <string name="search_apps_placeholder">アプリ名やパッケージ名で検索...</string>
     <string name="content_description_search">検索</string>
     <string name="content_description_clear_search">検索をクリア</string>
@@ -41,4 +45,6 @@
     <string name="post_notification_permission_title">2. 通知の送信（必須）</string>
     <string name="post_notification_permission_description">元の通知を消去せず、安全にまとめを表示するために必要です。</string>
     <string name="post_notification_permission_action">通知の送信を許可する</string>
+    <string name="post_notification_permission_settings_description">通知の送信が許可されていません。アプリ情報で「通知を許可」をオンにしてください。</string>
+    <string name="post_notification_permission_settings_action">アプリ情報を開く</string>
 </resources>

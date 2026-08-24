@@ -33,6 +33,26 @@ fun SettingsScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var showMenu by remember { mutableStateOf(false) }
+    var showEnableAllDialog by remember { mutableStateOf(false) }
+
+    if (showEnableAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showEnableAllDialog = false },
+            title = { Text(stringResource(R.string.enable_all_apps_dialog_title)) },
+            text = { Text(stringResource(R.string.enable_all_apps_dialog_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setAllClean(true)
+                    showEnableAllDialog = false
+                }) { Text(stringResource(R.string.enable_all_apps_dialog_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEnableAllDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -63,8 +83,8 @@ fun SettingsScreen(
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.enable_all_apps)) },
                                 onClick = {
-                                    viewModel.setAllClean(true)
                                     showMenu = false
+                                    showEnableAllDialog = true
                                 }
                             )
                             DropdownMenuItem(
@@ -94,6 +114,13 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+
+            Text(
+                text = stringResource(R.string.settings_action_limitation),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
 
             OutlinedTextField(

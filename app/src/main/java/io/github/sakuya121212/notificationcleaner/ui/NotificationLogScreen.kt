@@ -32,7 +32,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val TIMESTAMP_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
+    DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.getDefault())
 
 @Composable
 fun NotificationLogScreen(
@@ -254,15 +254,42 @@ fun NotificationListPane(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(notifications, key = { it.id }) { notification ->
-                    SwipeToDeleteNotification(
-                        notification = notification,
-                        onClick = { onNotificationClick(notification) },
-                        onDelete = { onDeleteNotification(notification) }
-                    )
+                notifications.groupBy { it.packageName }.forEach { (packageName, appNotifications) ->
+                    item(key = "header_$packageName") {
+                        NotificationAppGroupHeader(appNotifications.first(), appNotifications.size)
+                    }
+                    items(appNotifications, key = { it.id }) { notification ->
+                        SwipeToDeleteNotification(
+                            notification = notification,
+                            onClick = { onNotificationClick(notification) },
+                            onDelete = { onDeleteNotification(notification) }
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NotificationAppGroupHeader(notification: NotificationEntity, count: Int) {
+    Row(
+        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        AppIcon(notification.packageName, Modifier.size(28.dp).clip(RoundedCornerShape(7.dp)))
+        Text(
+            text = notification.appName ?: notification.packageName,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = stringResource(R.string.notification_count, count),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -428,11 +455,18 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
 }
 
 
-fun formatTimestamp(timestamp: Long): String {
-    return try {
-        val instant = Instant.ofEpochMilli(timestamp)
-        TIMESTAMP_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))
-    } catch (_: Exception) {
-        ""
+fun formatTimestamp(timestamp: Long, nowMillis: Long = System.currentTimeMillis()): String {
+    val elapsed = (nowMillis - timestamp).coerceAtLeast(0L)
+    return when {
+        elapsed < 60_000L -> "たった今"
+        elapsed < 60 * 60_000L -> "${elapsed / 60_000L}分前"
+        elapsed < 24 * 60 * 60_000L -> "${elapsed / (60 * 60_000L)}時間前"
+        elapsed < 7 * 24 * 60 * 60_000L -> "${elapsed / (24 * 60 * 60_000L)}日前"
+        else -> try {
+            val instant = Instant.ofEpochMilli(timestamp)
+            TIMESTAMP_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))
+        } catch (_: Exception) {
+            ""
+        }
     }
 }
