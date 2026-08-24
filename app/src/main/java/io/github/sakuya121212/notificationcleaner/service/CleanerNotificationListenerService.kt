@@ -1,11 +1,14 @@
 package io.github.sakuya121212.notificationcleaner.service
 
+import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -276,10 +279,23 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             originalContentIntents[key] = intent
         }
 
-        fun sendOriginalContentIntent(notificationKey: String?): Boolean {
+        @Suppress("DEPRECATION") // MODE_BACKGROUND_ACTIVITY_START_ALLOWED is required on API 34-35.
+        fun sendOriginalContentIntent(context: Context, notificationKey: String?): Boolean {
             val pendingIntent = notificationKey?.let(originalContentIntents::get) ?: return false
             return try {
-                pendingIntent.send()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val options = ActivityOptions.makeBasic().apply {
+                        pendingIntentBackgroundActivityStartMode =
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE
+                            } else {
+                                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                            }
+                    }
+                    pendingIntent.send(context, 0, null, null, null, null, options.toBundle())
+                } else {
+                    pendingIntent.send()
+                }
                 true
             } catch (_: PendingIntent.CanceledException) {
                 originalContentIntents.remove(notificationKey)

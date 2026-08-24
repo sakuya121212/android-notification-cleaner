@@ -55,7 +55,7 @@ class NotificationViewModel(
 
     fun openNotification(notification: NotificationEntity) {
         val context = application ?: return
-        if (CleanerNotificationListenerService.sendOriginalContentIntent(notification.key)) return
+        if (CleanerNotificationListenerService.sendOriginalContentIntent(context, notification.key)) return
 
         // A PendingIntent cannot be retained after the app process is recreated.
         // In that case, still take the user to the notification's source app.
