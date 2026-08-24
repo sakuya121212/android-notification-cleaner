@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [NotificationEntity::class, AppFilterEntity::class], version = 4, exportSchema = false)
+@Database(entities = [NotificationEntity::class, AppFilterEntity::class], version = 4, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun appFilterDao(): AppFilterDao
@@ -24,6 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     "notification_database"
                 )
                     .addMigrations(MIGRATION_3_4)
+                    // Versions 1 and 2 predate the schema retained in this source tree.
+                    // Recreate only those unknown schemas rather than crashing on upgrade.
+                    .fallbackToDestructiveMigrationFrom(1, 2)
                     .build()
                 INSTANCE = instance
                 instance

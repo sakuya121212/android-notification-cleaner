@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.notificationcleaner.R
 import com.example.notificationcleaner.data.NotificationEntity
 import com.example.notificationcleaner.data.NotificationRepository
 import com.example.notificationcleaner.service.MyNotificationListenerService
@@ -61,8 +62,8 @@ class NotificationViewModel(
         context.packageManager.getLaunchIntentForPackage(notification.packageName)?.let { intent ->
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            _messages.tryEmit("元の通知を開けないため、アプリを開きました。")
-        } ?: _messages.tryEmit("この通知のアプリを開けませんでした。")
+            _messages.tryEmit(context.getString(R.string.message_opened_source_app))
+        } ?: _messages.tryEmit(context.getString(R.string.message_cannot_open_source_app))
     }
 
     fun clearAllNotifications() {
@@ -76,7 +77,7 @@ class NotificationViewModel(
     private fun cancelSummaryNotification() {
         application?.let {
             val notificationManager = it.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.cancel(1001)
+            notificationManager?.cancel(MyNotificationListenerService.SUMMARY_NOTIFICATION_ID)
         }
     }
 

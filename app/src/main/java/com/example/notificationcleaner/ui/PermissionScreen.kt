@@ -37,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.notificationcleaner.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -121,14 +123,14 @@ fun PermissionOnboarding(
         }
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "NotificationCleaner の初期設定",
+            text = stringResource(R.string.onboarding_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "通知を自動的にクリーンして整理するために、以下の権限の許可をお願いします。",
+            text = stringResource(R.string.onboarding_description),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -145,14 +147,14 @@ fun PermissionOnboarding(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "1. 通知へのアクセス (必須)",
+                    text = stringResource(R.string.listener_permission_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "届いた通知を検出して自動クリーンするために必要です。",
+                    text = stringResource(R.string.listener_permission_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -167,7 +169,7 @@ fun PermissionOnboarding(
                     )
                 ) {
                     Text(
-                        text = if (isListenerGranted) "✓ 通知アクセス許可済み" else "通知アクセスを許可する",
+                        text = if (isListenerGranted) stringResource(R.string.listener_permission_granted) else stringResource(R.string.listener_permission_action),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -186,14 +188,14 @@ fun PermissionOnboarding(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                    text = "2. 通知の送信 (必須)",
+                    text = stringResource(R.string.post_notification_permission_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                    text = "元の通知を消去せず、安全にまとめを表示するために必要です。",
+                    text = stringResource(R.string.post_notification_permission_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -203,7 +205,7 @@ fun PermissionOnboarding(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("通知の送信を許可する", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.post_notification_permission_action), fontWeight = FontWeight.Bold)
                     }
                 }
             }

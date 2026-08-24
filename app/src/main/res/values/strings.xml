@@ -1,3 +1,44 @@
 <resources>
     <string name="app_name">NotificationCleaner</string>
+    <string name="notification_channel_name">NCleaner</string>
+    <string name="notification_channel_description">通知をまとめて表示します</string>
+    <string name="summary_notification_title">NCleaner</string>
+    <string name="summary_notification_icon_description">通知クリーナー</string>
+    <string name="summary_notification_count_default">ジャンク通知: 0</string>
+    <string name="summary_notification_count_html">ジャンク通知: &lt;font color=&quot;#FF5252&quot;&gt;&lt;b&gt;%1$d&lt;/b&gt;&lt;/font&gt;</string>
+    <string name="action_open">開く</string>
+    <string name="message_opened_source_app">元の通知を開けないため、アプリを開きました。</string>
+    <string name="message_cannot_open_source_app">この通知のアプリを開けませんでした。</string>
+    <string name="dialog_clean_title">通知のクリーン</string>
+    <string name="dialog_clean_message">保存されているすべてのクリーン対象通知を消去しますか？</string>
+    <string name="action_clear_all">すべて消去</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="content_description_settings">設定</string>
+    <string name="notification_count_label">ジャンク通知:</string>
+    <string name="notification_count">%1$d件</string>
+    <string name="clear_all_hint">ワンタップでまとめて消去</string>
+    <string name="empty_notifications_title">通知バーはクリーンです</string>
+    <string name="empty_notifications_message">自動クリーンするアプリは、右上の設定から選択できます。</string>
+    <string name="content_description_delete_notification">通知を削除</string>
+    <string name="untitled_notification">無題</string>
+    <string name="settings_title">自動クリーンの設定</string>
+    <string name="content_description_back">戻る</string>
+    <string name="content_description_more_options">その他のオプション</string>
+    <string name="enable_all_apps">すべてのアプリを有効化</string>
+    <string name="disable_all_apps">すべてのアプリを無効化</string>
+    <string name="settings_description">通知を自動的にクリーン（消去・まとめ）するアプリを選択してください。</string>
+    <string name="search_apps_placeholder">アプリ名やパッケージ名で検索...</string>
+    <string name="content_description_search">検索</string>
+    <string name="content_description_clear_search">検索をクリア</string>
+    <string name="no_matching_apps">「%1$s」に一致するアプリは見つかりませんでした</string>
+    <string name="no_apps">アプリが見つかりません</string>
+    <string name="onboarding_title">NotificationCleaner の初期設定</string>
+    <string name="onboarding_description">通知を自動的にクリーンして整理するために、以下の権限の許可をお願いします。</string>
+    <string name="listener_permission_title">1. 通知へのアクセス（必須）</string>
+    <string name="listener_permission_description">届いた通知を検出して自動クリーンするために必要です。</string>
+    <string name="listener_permission_granted">✓ 通知アクセス許可済み</string>
+    <string name="listener_permission_action">通知アクセスを許可する</string>
+    <string name="post_notification_permission_title">2. 通知の送信（必須）</string>
+    <string name="post_notification_permission_description">元の通知を消去せず、安全にまとめを表示するために必要です。</string>
+    <string name="post_notification_permission_action">通知の送信を許可する</string>
 </resources>

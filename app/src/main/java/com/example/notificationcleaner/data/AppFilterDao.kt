@@ -1,4 +1,4 @@
-﻿package com.example.notificationcleaner.data
+package com.example.notificationcleaner.data
 
 import androidx.room.Dao
 import androidx.room.Insert

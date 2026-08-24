@@ -1,4 +1,4 @@
 <resources>
 
-    <style name="Theme.NotificationCleaner" parent="Theme.MaterialComponents.Light" />
+    <style name="Theme.NotificationCleaner" parent=":style/Theme.Material.Light.NoActionBar" />
 </resources>

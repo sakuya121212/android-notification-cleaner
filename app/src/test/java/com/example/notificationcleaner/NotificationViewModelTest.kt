@@ -126,26 +126,24 @@ class NotificationViewModelTest {
         val initialList = viewModel.notifications.first()
         assertTrue(initialList.isEmpty())
     }
-
     @Test
-    fun insertAndObserveNotification() = runTest {
-        val entity = NotificationEntity(
-            packageName = "com.test.app",
-            appName = "Test App",
-            title = "Hello",
-            text = "World",
-            postTime = 1700000000000L,
-            key = "key1"
+    fun notifications_excludesDisabledAppsWhileKeepingTheirHistory() = runTest {
+        val disabled = NotificationEntity(
+            id = 1L, packageName = "com.example.disabled", title = "Hidden", text = null, postTime = 1L
         )
-        repository.insert(entity)
+        val enabled = NotificationEntity(
+            id = 2L, packageName = "com.example.enabled", title = "Visible", text = null, postTime = 2L
+        )
+
+        repository.insert(disabled)
+        repository.setCleanEnabled(enabled.packageName, true)
+        repository.insert(enabled)
         advanceUntilIdle()
 
-        val list = repository.allNotifications.first()
-        assertEquals(1, list.size)
-        assertEquals("Test App", list[0].appName)
-        assertEquals("Hello", list[0].title)
+        assertEquals(2, repository.allNotifications.first().size)
+        val visible = viewModel.notifications.first { it.size == 1 }
+        assertEquals(listOf(enabled.packageName), visible.map { it.packageName })
     }
-
     @Test
     fun deleteNotification_removesItem() = runTest {
         val entity = NotificationEntity(

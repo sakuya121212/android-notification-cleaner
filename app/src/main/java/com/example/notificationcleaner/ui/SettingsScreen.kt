@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.notificationcleaner.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +39,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "自動クリーンの設定",
+                        text = stringResource(R.string.settings_title),
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -45,28 +47,28 @@ fun SettingsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.content_description_back)
                         )
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = "More options")
+                            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.content_description_more_options))
                         }
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("すべてのアプリを有効化") },
+                                text = { Text(stringResource(R.string.enable_all_apps)) },
                                 onClick = {
                                     viewModel.setAllClean(true)
                                     showMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("すべてのアプリを無効化") },
+                                text = { Text(stringResource(R.string.disable_all_apps)) },
                                 onClick = {
                                     viewModel.setAllClean(false)
                                     showMenu = false
@@ -88,7 +90,7 @@ fun SettingsScreen(
                 .padding(innerPadding)
         ) {
             Text(
-                text = "通知を自動的にクリーン（消去・まとめ）するアプリを選択してください。",
+                text = stringResource(R.string.settings_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
@@ -100,18 +102,18 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("アプリ名やパッケージ名で検索...") },
+                placeholder = { Text(stringResource(R.string.search_apps_placeholder)) },
                 leadingIcon = {
                     Icon(
                         Icons.Rounded.Search,
-                        contentDescription = "Search",
+                        contentDescription = stringResource(R.string.content_description_search),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(Icons.Rounded.Clear, contentDescription = "Clear search")
+                            Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.content_description_clear_search))
                         }
                     }
                 },
@@ -140,7 +142,7 @@ fun SettingsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (searchQuery.isNotEmpty()) "「$searchQuery」に一致するアプリは見つかりませんでした" else "アプリが見つかりません",
+                        text = if (searchQuery.isNotEmpty()) stringResource(R.string.no_matching_apps, searchQuery) else stringResource(R.string.no_apps),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

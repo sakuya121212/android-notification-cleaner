@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -16,7 +16,7 @@
         android:layout_height="44dp"
         android:layout_marginEnd="12dp"
         android:src="@drawable/ic_cleaner_bell"
-        android:contentDescription="Notification Cleaner" />
+        android:contentDescription="@string/summary_notification_icon_description" />
 
     <!-- Text content & app icons -->
     <LinearLayout
@@ -29,7 +29,7 @@
             android:id="@+id/notification_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="NCleaner"
+            android:text="@string/summary_notification_title"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary" />
@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="ジャンク通知: 0"
+            android:text="@string/summary_notification_count_default"
             android:textSize="14sp"
             android:textColor="?android:attr/textColorPrimary" />
 
@@ -95,7 +95,7 @@
         android:paddingTop="8dp"
         android:paddingEnd="16dp"
         android:paddingBottom="8dp"
-        android:text="クリーン"
+        android:text="@string/action_open"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
         android:textStyle="bold" />

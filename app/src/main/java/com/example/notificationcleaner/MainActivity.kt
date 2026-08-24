@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,14 +33,16 @@ class MainActivity : ComponentActivity() {
 
                 // Refresh permission state when activity resumes
                 val lifecycleOwner = LocalLifecycleOwner.current
-                remember(lifecycleOwner) {
+                DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
                             isPermissionGranted = isNotificationCleanerReady(this)
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
-                    observer
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
                 }
 
                 AppNavigation(

@@ -18,11 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.notificationcleaner.R
 import com.example.notificationcleaner.data.NotificationEntity
 import kotlinx.coroutines.flow.collect
 import java.time.Instant
@@ -51,8 +53,8 @@ fun NotificationLogScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("通知のクリーン") },
-            text = { Text("保存されているすべてのクリーン対象通知を消去しますか？") },
+            title = { Text(stringResource(R.string.dialog_clean_title)) },
+            text = { Text(stringResource(R.string.dialog_clean_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -60,12 +62,12 @@ fun NotificationLogScreen(
                         showClearDialog = false
                     }
                 ) {
-                    Text("すべて消去", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.action_clear_all), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("キャンセル")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -115,7 +117,7 @@ fun NotificationListPane(
                             }
                         }
                         Text(
-                            text = "NotificationCleaner",
+                            text = stringResource(R.string.app_name),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -123,7 +125,7 @@ fun NotificationListPane(
                 },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+                        Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.content_description_settings))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -149,20 +151,20 @@ fun NotificationListPane(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "ジャンク通知: ",
+                                    text = stringResource(R.string.notification_count_label),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "${notifications.size}件",
+                                    text = stringResource(R.string.notification_count, notifications.size),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
                             Text(
-                                text = "ワンタップでまとめて消去",
+                                text = stringResource(R.string.clear_all_hint),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -183,7 +185,7 @@ fun NotificationListPane(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "すべて消去",
+                                text = stringResource(R.string.action_clear_all),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -231,13 +233,13 @@ fun NotificationListPane(
                         }
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
-                            text = "通知バーはクリーンです",
+                            text = stringResource(R.string.empty_notifications_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "自動クリーンするアプリは、右上の設定から選択できます。",
+                            text = stringResource(R.string.empty_notifications_message),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -294,7 +296,7 @@ private fun SwipeToDeleteNotification(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = "Delete notification",
+                    contentDescription = stringResource(R.string.content_description_delete_notification),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(end = 24.dp)
                 )
@@ -366,7 +368,7 @@ fun NotificationCardItem(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = notification.title ?: "No Title",
+                    text = notification.title ?: stringResource(R.string.untitled_notification),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -388,100 +390,6 @@ fun NotificationCardItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationDetailPane(
-    notification: NotificationEntity,
-    onDelete: () -> Unit
-) {
-    val displayName = notification.appName ?: notification.packageName
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("通知の詳細") },
-                actions = {
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Rounded.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(20.dp)
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        AppIcon(
-                            packageName = notification.packageName,
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                        )
-                        Column {
-                            Text(
-                                text = displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = notification.packageName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = formatTimestamp(notification.postTime),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = notification.title ?: "No Title",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = notification.text ?: "本文なし",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
@@ -520,19 +428,6 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-fun EmptyDetailPane() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "通知を選択すると詳細が表示されます",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
 
 fun formatTimestamp(timestamp: Long): String {
     return try {

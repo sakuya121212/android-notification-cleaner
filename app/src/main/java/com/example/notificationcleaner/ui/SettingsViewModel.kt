@@ -1,6 +1,7 @@
 package com.example.notificationcleaner.ui
 
 import android.app.Application
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -42,12 +43,11 @@ class SettingsViewModel(
             val pm = getApplication<Application>().packageManager
             val myPackage = getApplication<Application>().packageName
 
-            val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            val apps = installedApps
-                .filter { it.packageName != myPackage }
-                .map { appInfo ->
-                    val name = appInfo.loadLabel(pm).toString()
-                    Pair(appInfo.packageName, name)
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_ALL)
+                .filter { it.activityInfo.packageName != myPackage }
+                .map { activity ->
+                    Pair(activity.activityInfo.packageName, activity.loadLabel(pm).toString())
                 }
                 .distinctBy { it.first }
                 .sortedBy { it.second.lowercase() }

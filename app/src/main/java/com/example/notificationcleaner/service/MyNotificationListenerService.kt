@@ -27,7 +27,8 @@ import com.example.notificationcleaner.data.NotificationRepositoryImpl
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
+import java.util.LinkedHashMap
 
 class MyNotificationListenerService : NotificationListenerService() {
 
@@ -38,7 +39,6 @@ class MyNotificationListenerService : NotificationListenerService() {
     }
 
     private val channelId = "cleaner_channel"
-    private val summaryNotificationId = 1001
     private val historyRetentionMillis = 30L * 24 * 60 * 60 * 1000
     private val maxHistoryEntries = 500
 
@@ -171,16 +171,15 @@ class MyNotificationListenerService : NotificationListenerService() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         if (count == 0) {
-            notificationManager.cancel(summaryNotificationId)
+            notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
             return
         }
 
         val recentNotificationPreviews = recentNotifications.take(3)
 
-        // Intent to launch MainActivity when "クリーン" button or notification is clicked
+        // Both the summary and its button open the notification log.
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("ACTION_OPEN_CLEAN", true)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -190,9 +189,9 @@ class MyNotificationListenerService : NotificationListenerService() {
         )
 
         val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
-            setTextViewText(R.id.notification_title, "NCleaner")
+            setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
             val formattedCount = Html.fromHtml(
-                "ジャンク通知: <font color='#FF5252'><b>$count</b></font>",
+                getString(R.string.summary_notification_count_html, count),
                 Html.FROM_HTML_MODE_LEGACY
             )
             setTextViewText(R.id.notification_count_text, formattedCount)
@@ -233,7 +232,7 @@ class MyNotificationListenerService : NotificationListenerService() {
             .build()
 
         try {
-            notificationManager.notify(summaryNotificationId, summaryNotification)
+            notificationManager.notify(SUMMARY_NOTIFICATION_ID, summaryNotification)
         } catch (e: SecurityException) {
             Log.e(TAG, "Failed to post notification due to security exception", e)
         }
@@ -253,8 +252,8 @@ class MyNotificationListenerService : NotificationListenerService() {
     }
 
     private fun createNotificationChannel() {
-        val name = "NCleaner"
-        val descriptionText = "Channel for notification summary"
+        val name = getString(R.string.notification_channel_name)
+        val descriptionText = getString(R.string.notification_channel_description)
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(channelId, name, importance).apply {
             description = descriptionText
@@ -272,16 +271,18 @@ class MyNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "MyNotificationListener"
+        const val SUMMARY_NOTIFICATION_ID = 1001
         private const val MAX_RETAINED_CONTENT_INTENTS = 500
-        private val originalContentIntents = ConcurrentHashMap<String, PendingIntent>()
+        private val originalContentIntents = Collections.synchronizedMap(
+            object : LinkedHashMap<String, PendingIntent>(MAX_RETAINED_CONTENT_INTENTS, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, PendingIntent>?): Boolean {
+                    return size > MAX_RETAINED_CONTENT_INTENTS
+                }
+            }
+        )
 
         private fun retainOriginalContentIntent(key: String, intent: PendingIntent) {
             originalContentIntents[key] = intent
-            if (originalContentIntents.size > MAX_RETAINED_CONTENT_INTENTS) {
-                originalContentIntents.keys
-                    .take(originalContentIntents.size - MAX_RETAINED_CONTENT_INTENTS)
-                    .forEach { key -> originalContentIntents.remove(key) }
-            }
         }
 
         fun sendOriginalContentIntent(notificationKey: String?): Boolean {
