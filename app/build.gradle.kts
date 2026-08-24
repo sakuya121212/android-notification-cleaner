@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.notificationcleaner"
+    namespace = "io.github.sakuya121212.notificationcleaner"
     compileSdk = 37
 
     defaultConfig {
