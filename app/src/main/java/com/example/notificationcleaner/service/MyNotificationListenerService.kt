@@ -41,6 +41,7 @@ class MyNotificationListenerService : NotificationListenerService() {
     private val summaryNotificationId = 1001
     private val historyRetentionMillis = 30L * 24 * 60 * 60 * 1000
     private val maxHistoryEntries = 500
+    private val summaryRefreshIntervalMillis = 60_000L
 
     override fun onCreate() {
         super.onCreate()
@@ -50,6 +51,15 @@ class MyNotificationListenerService : NotificationListenerService() {
         // immediately even while the activity is not on screen.
         serviceScope.launch {
             repository.allAppFilters.collect {
+                updateSummaryNotification()
+            }
+        }
+
+        // Keep the relative "last notification" time current even when no new
+        // notifications arrive.
+        serviceScope.launch {
+            while (isActive) {
+                delay(summaryRefreshIntervalMillis)
                 updateSummaryNotification()
             }
         }
@@ -176,6 +186,11 @@ class MyNotificationListenerService : NotificationListenerService() {
         }
 
         val recentNotificationPreviews = recentNotifications.take(3)
+        val latestPostTime = recentNotifications.maxOf { it.postTime }
+        val lastNotificationText = NotificationAgeFormatter.format(
+            postTimeMillis = latestPostTime,
+            nowMillis = System.currentTimeMillis()
+        )
 
         // Intent to launch MainActivity when "クリーン" button or notification is clicked
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -190,12 +205,13 @@ class MyNotificationListenerService : NotificationListenerService() {
         )
 
         val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
-            setTextViewText(R.id.notification_title, "NCleaner")
+            setTextViewText(R.id.notification_title, "Notification Cleaner")
             val formattedCount = Html.fromHtml(
                 "ジャンク通知: <font color='#FF5252'><b>$count</b></font>",
                 Html.FROM_HTML_MODE_LEGACY
             )
             setTextViewText(R.id.notification_count_text, formattedCount)
+            setTextViewText(R.id.notification_last_time_text, "最後の通知: $lastNotificationText")
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
 
             // Reset icon preview visibilities
@@ -224,6 +240,11 @@ class MyNotificationListenerService : NotificationListenerService() {
 
         val summaryNotification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_cleaner_bell)
+            .setContentTitle("Notification Cleaner")
+            .setContentText("集約された通知: $count ・ 最後の通知: $lastNotificationText")
+            .setNumber(count)
+            .setWhen(latestPostTime)
+            .setShowWhen(true)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(remoteViews)
             .setCustomBigContentView(remoteViews)

@@ -12,9 +12,9 @@
     <!-- App Icon -->
     <ImageView
         android:id="@+id/notification_app_icon"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_marginEnd="12dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="10dp"
         android:src="@drawable/ic_cleaner_bell"
         android:contentDescription="Notification Cleaner" />
 
@@ -29,7 +29,7 @@
             android:id="@+id/notification_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="NCleaner"
+            android:text="Notification Cleaner"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary" />
@@ -42,6 +42,15 @@
             android:text="ジャンク通知: 0"
             android:textSize="14sp"
             android:textColor="?android:attr/textColorPrimary" />
+
+        <TextView
+            android:id="@+id/notification_last_time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:text="最後の通知: 1分未満"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="12sp" />
 
         <LinearLayout
             android:id="@+id/notification_icons_container"
