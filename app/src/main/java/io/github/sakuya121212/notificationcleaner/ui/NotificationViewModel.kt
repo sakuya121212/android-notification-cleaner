@@ -76,6 +76,12 @@ class NotificationViewModel(
         }
     }
 
+    fun restoreNotifications(notifications: List<NotificationEntity>) {
+        viewModelScope.launch {
+            notifications.forEach { repository.insert(it) }
+        }
+    }
+
     private fun cancelSummaryNotification() {
         application?.let {
             val notificationManager = it.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager

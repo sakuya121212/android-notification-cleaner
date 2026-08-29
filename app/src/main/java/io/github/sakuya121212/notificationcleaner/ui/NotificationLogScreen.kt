@@ -28,6 +28,7 @@ import coil.compose.AsyncImage
 import io.github.sakuya121212.notificationcleaner.R
 import io.github.sakuya121212.notificationcleaner.data.NotificationEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
@@ -40,8 +41,10 @@ fun NotificationLogScreen(
     onNavigateToSettings: () -> Unit
 ) {
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
-    var showClearDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    val undoLabel = stringResource(R.string.action_undo)
+    val clearedMessage = stringResource(R.string.notifications_cleared, notifications.size)
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { message ->
@@ -49,34 +52,24 @@ fun NotificationLogScreen(
         }
     }
 
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text(stringResource(R.string.dialog_clean_title)) },
-            text = { Text(stringResource(R.string.dialog_clean_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.clearAllNotifications()
-                        showClearDialog = false
-                    }
-                ) {
-                    Text(stringResource(R.string.action_clear_all), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        )
-    }
-
     NotificationListPane(
         notifications = notifications,
         onNotificationClick = viewModel::openNotification,
         onDeleteNotification = viewModel::deleteNotification,
-        onClearAll = { showClearDialog = true },
+        onClearAll = {
+            val clearedNotifications = notifications
+            viewModel.clearAllNotifications()
+            coroutineScope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = clearedMessage,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.restoreNotifications(clearedNotifications)
+                }
+            }
+        },
         onNavigateToSettings = onNavigateToSettings,
         snackbarHostState = snackbarHostState
     )
@@ -174,7 +167,8 @@ fun NotificationListPane(
                         Button(
                             onClick = onClearAll,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
                             ),
                             shape = RoundedCornerShape(16.dp),
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
@@ -352,8 +346,6 @@ fun NotificationCardItem(
     notification: NotificationEntity,
     onClick: () -> Unit
 ) {
-    val displayName = notification.appName ?: notification.packageName
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,65 +356,41 @@ fun NotificationCardItem(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(16.dp)
         ) {
-            AppIcon(
-                packageName = notification.packageName,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-            )
-
-            Column(
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = displayName,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = formatTimestamp(notification.postTime),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = notification.title ?: stringResource(R.string.untitled_notification),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = formatTimestamp(notification.postTime),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (!notification.text.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = notification.text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                if (!notification.text.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = notification.text,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }

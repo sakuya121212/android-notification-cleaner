@@ -194,6 +194,22 @@ class NotificationViewModelTest {
     }
 
     @Test
+    fun restoreNotifications_restoresClearedItems() = runTest {
+        val items = listOf(
+            NotificationEntity(id = 1L, packageName = "a", title = "A", text = "a", postTime = 1L, key = "restore-a"),
+            NotificationEntity(id = 2L, packageName = "b", title = "B", text = "b", postTime = 2L, key = "restore-b")
+        )
+        items.forEach { repository.insert(it) }
+        viewModel.clearAllNotifications()
+        advanceUntilIdle()
+
+        viewModel.restoreNotifications(items)
+        advanceUntilIdle()
+
+        assertEquals(items.map { it.key }.toSet(), repository.allNotifications.first().map { it.key }.toSet())
+    }
+
+    @Test
     fun formatTimestamp_formatsCorrectly() {
         val formatted = formatTimestamp(1700000000000L, 1700000300000L, "たった今", "%1\$d分前", "%1\$d時間前", "%1\$d日前")
         assertEquals("5分前", formatted)

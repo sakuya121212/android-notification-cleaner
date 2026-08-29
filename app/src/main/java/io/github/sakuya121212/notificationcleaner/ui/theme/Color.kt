@@ -8,11 +8,10 @@ val CleanerBlueLight = Color(0xFF64B5F6)
 val CleanerBlueDark = Color(0xFF1565C0)
 
 // Action Green (Matching "クリーン" button)
-val CleanGreen = Color(0xFF00C853)
 val CleanGreenLight = Color(0xFF69F0AE)
-val CleanGreenDark = Color(0xFF009624)
+val CleanGreenDark = Color(0xFF007A33)
 
-// Alert Red (Matching "ジャンク通知" badge)
+// Alert Red (Destructive actions and notification count)
 val AlertRed = Color(0xFFFF5252)
 val AlertRedLight = Color(0xFFFF8A80)
 val AlertRedDark = Color(0xFFD50000)
