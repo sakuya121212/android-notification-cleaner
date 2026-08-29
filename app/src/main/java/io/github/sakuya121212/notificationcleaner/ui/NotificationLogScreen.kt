@@ -33,9 +33,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val TIMESTAMP_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.getDefault())
-
 @Composable
 fun NotificationLogScreen(
     viewModel: NotificationViewModel,
@@ -497,7 +494,8 @@ fun formatTimestamp(
         elapsed < 7 * 24 * 60 * 60_000L -> String.format(Locale.getDefault(), daysAgoFormat, elapsed / (24 * 60 * 60_000L))
         else -> try {
             val instant = Instant.ofEpochMilli(timestamp)
-            TIMESTAMP_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.getDefault())
+                .format(instant.atZone(ZoneId.systemDefault()))
         } catch (_: Exception) {
             ""
         }

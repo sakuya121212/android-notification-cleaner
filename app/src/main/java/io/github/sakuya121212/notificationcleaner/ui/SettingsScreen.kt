@@ -82,6 +82,7 @@ fun SettingsScreen(
                         ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.enable_all_apps)) },
+                                enabled = !isLoading,
                                 onClick = {
                                     showMenu = false
                                     showEnableAllDialog = true
@@ -89,6 +90,7 @@ fun SettingsScreen(
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.disable_all_apps)) },
+                                enabled = !isLoading,
                                 onClick = {
                                     viewModel.setAllClean(false)
                                     showMenu = false

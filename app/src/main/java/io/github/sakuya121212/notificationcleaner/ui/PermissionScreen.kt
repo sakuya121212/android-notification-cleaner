@@ -2,6 +2,7 @@ package io.github.sakuya121212.notificationcleaner.ui
 
 import android.Manifest
 import android.app.Activity
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -41,9 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import io.github.sakuya121212.notificationcleaner.R
+import io.github.sakuya121212.notificationcleaner.service.CleanerNotificationListenerService
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @Composable
 fun PermissionScreen(
@@ -61,13 +63,7 @@ fun PermissionScreen(
     val activity = context as? Activity
     var isListenerGranted by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isPostNotificationGranted by remember {
-        mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                NotificationManagerCompat.from(context).areNotificationsEnabled()
-            } else {
-                true
-            }
-        )
+        mutableStateOf(canPostSummaryNotifications(context))
     }
 
     var hasRequestedPostNotification by rememberSaveable { mutableStateOf(false) }
@@ -82,8 +78,7 @@ fun PermissionScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isListenerGranted = isNotificationServiceEnabled(context)
-                isPostNotificationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    NotificationManagerCompat.from(context).areNotificationsEnabled()
+                isPostNotificationGranted = canPostSummaryNotifications(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -104,6 +99,21 @@ fun PermissionScreen(
             context.startActivity(intent)
         },
         onRequestPostNotification = {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val isSummaryChannelBlocked = notificationManager
+                .getNotificationChannel(CleanerNotificationListenerService.SUMMARY_NOTIFICATION_CHANNEL_ID)
+                ?.importance == NotificationManager.IMPORTANCE_NONE
+
+            if (isSummaryChannelBlocked) {
+                context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    putExtra(
+                        Settings.EXTRA_CHANNEL_ID,
+                        CleanerNotificationListenerService.SUMMARY_NOTIFICATION_CHANNEL_ID
+                    )
+                })
+                return@PermissionOnboarding
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (hasRequestedPostNotification && activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(
                         activity, Manifest.permission.POST_NOTIFICATIONS
@@ -115,6 +125,10 @@ fun PermissionScreen(
                 } else {
                     postNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+            } else {
+                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                })
             }
         },
         isPostNotificationPermanentlyDenied = hasRequestedPostNotification && !isPostNotificationGranted &&
@@ -208,7 +222,7 @@ fun PermissionOnboarding(
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !isPostNotificationGranted) {
+        if (!isPostNotificationGranted) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -255,7 +269,15 @@ fun isNotificationServiceEnabled(context: Context): Boolean {
 }
 
 fun isNotificationCleanerReady(context: Context): Boolean {
-    val canPostNotifications = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        NotificationManagerCompat.from(context).areNotificationsEnabled()
-    return isNotificationServiceEnabled(context) && canPostNotifications
+    return isNotificationServiceEnabled(context) && canPostSummaryNotifications(context)
+}
+
+private fun canPostSummaryNotifications(context: Context): Boolean {
+    if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val channel = notificationManager.getNotificationChannel(
+        CleanerNotificationListenerService.SUMMARY_NOTIFICATION_CHANNEL_ID
+    ) ?: return true
+    return channel.importance != NotificationManager.IMPORTANCE_NONE
 }

@@ -38,7 +38,6 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         NotificationRepositoryImpl(database.notificationDao(), database.appFilterDao())
     }
 
-    private val channelId = "cleaner_channel"
     private val historyRetentionMillis = 30L * 24 * 60 * 60 * 1000
     private val maxHistoryEntries = 500
     private val summaryRefreshIntervalMillis = 60_000L
@@ -217,7 +216,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             bindPreviewIcons(this, displayedIcons, previewIcons.size > MAX_SUMMARY_APP_ICONS)
         }
 
-        val summaryNotification = NotificationCompat.Builder(this, channelId)
+        val summaryNotification = NotificationCompat.Builder(this, SUMMARY_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_cleaner_bell)
             .setContentTitle(getString(R.string.summary_notification_title))
             .setContentText("集約された通知: $count ・ 最後の通知: $lastNotificationText")
@@ -280,7 +279,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         val name = getString(R.string.notification_channel_name)
         val descriptionText = getString(R.string.notification_channel_description)
         val importance = NotificationManager.IMPORTANCE_LOW
-        val channel = NotificationChannel(channelId, name, importance).apply {
+        val channel = NotificationChannel(SUMMARY_NOTIFICATION_CHANNEL_ID, name, importance).apply {
             description = descriptionText
         }
         val notificationManager: NotificationManager =
@@ -293,7 +292,9 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        return isSummaryChannelEnabled(notificationManager.getNotificationChannel(channelId)?.importance)
+        return isSummaryChannelEnabled(
+            notificationManager.getNotificationChannel(SUMMARY_NOTIFICATION_CHANNEL_ID)?.importance
+        )
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
@@ -303,6 +304,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "CleanerNotificationListener"
+        const val SUMMARY_NOTIFICATION_CHANNEL_ID = "cleaner_channel"
         const val SUMMARY_NOTIFICATION_ID = 1001
         private const val MAX_SUMMARY_APP_ICONS = 3
         private const val MAX_RETAINED_CONTENT_INTENTS = 500
