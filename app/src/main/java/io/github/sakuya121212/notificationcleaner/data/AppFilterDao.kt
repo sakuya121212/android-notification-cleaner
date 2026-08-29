@@ -17,12 +17,6 @@ interface AppFilterDao {
     @Query("SELECT * FROM app_filters")
     fun getAll(): Flow<List<AppFilterEntity>>
 
-    @Query("SELECT * FROM app_filters WHERE packageName = :packageName LIMIT 1")
-    suspend fun getFilter(packageName: String): AppFilterEntity?
-
     @Query("SELECT isCleanEnabled FROM app_filters WHERE packageName = :packageName LIMIT 1")
     suspend fun isCleanEnabled(packageName: String): Boolean?
-
-    @Query("DELETE FROM app_filters")
-    suspend fun deleteAll()
 }

@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import io.github.sakuya121212.notificationcleaner.R
 import io.github.sakuya121212.notificationcleaner.data.NotificationEntity
@@ -85,11 +87,8 @@ class NotificationViewModel(
         fun provideFactory(
             repository: NotificationRepository,
             application: Application? = null
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return NotificationViewModel(repository, application) as T
-            }
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer { NotificationViewModel(repository, application) }
         }
     }
 }

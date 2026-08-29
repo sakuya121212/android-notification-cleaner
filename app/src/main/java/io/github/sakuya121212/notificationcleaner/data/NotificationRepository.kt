@@ -27,38 +27,25 @@ class NotificationRepositoryImpl(
     override val allNotifications: Flow<List<NotificationEntity>> = notificationDao.getAll()
     override val allAppFilters: Flow<List<AppFilterEntity>> = appFilterDao.getAll()
 
-    override suspend fun insert(notification: NotificationEntity): Long {
-        return notificationDao.insert(notification)
-    }
+    override suspend fun insert(notification: NotificationEntity) = notificationDao.insert(notification)
 
-    override suspend fun delete(notification: NotificationEntity) {
-        notificationDao.delete(notification)
-    }
+    override suspend fun delete(notification: NotificationEntity) = notificationDao.delete(notification)
 
-    override suspend fun deleteAll() {
-        notificationDao.deleteAll()
-    }
+    override suspend fun deleteAll() = notificationDao.deleteAll()
 
-    override suspend fun getCount(): Int {
-        return notificationDao.getCount()
-    }
+    override suspend fun getCount() = notificationDao.getCount()
 
-    override suspend fun findByKey(key: String): NotificationEntity? {
-        return notificationDao.findByKey(key)
-    }
+    override suspend fun findByKey(key: String) = notificationDao.findByKey(key)
 
-    override suspend fun deleteByPackageName(packageName: String) {
-        notificationDao.deleteByPackageName(packageName)
-    }
+    override suspend fun deleteByPackageName(packageName: String) = notificationDao.deleteByPackageName(packageName)
 
     override suspend fun trimHistory(cutoffTime: Long, maxEntries: Int) {
         notificationDao.deleteOlderThan(cutoffTime)
         notificationDao.deleteExceedingLimit(maxEntries)
     }
 
-    override suspend fun getCleanNotificationSummary(previewLimit: Int): List<NotificationSummaryRow> {
-        return notificationDao.getCleanNotificationSummary(previewLimit)
-    }
+    override suspend fun getCleanNotificationSummary(previewLimit: Int) =
+        notificationDao.getCleanNotificationSummary(previewLimit)
 
     override suspend fun isCleanEnabledForPackage(packageName: String): Boolean {
         // Opt in only: an app is never cleaned until the user enables it.

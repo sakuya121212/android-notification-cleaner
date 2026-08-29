@@ -1,14 +1,18 @@
 package io.github.sakuya121212.notificationcleaner.ui
 
 import android.app.Application
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavEntry
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
 import io.github.sakuya121212.notificationcleaner.data.NotificationRepository
+
+private enum class Destination { PermissionCheck, NotificationLog, Settings }
 
 @Composable
 fun AppNavigation(
@@ -16,78 +20,47 @@ fun AppNavigation(
     isPermissionGranted: Boolean
 ) {
     val context = LocalContext.current
-    val initialKey = if (isPermissionGranted) {
-        AppDestinations.NotificationLog
-    } else {
-        AppDestinations.PermissionCheck
+    var destination by remember {
+        mutableStateOf(if (isPermissionGranted) Destination.NotificationLog else Destination.PermissionCheck)
     }
 
-    val backStack = rememberNavBackStack(initialKey)
-
-    // Sync backStack when permission state changes (e.g. granted from Settings or revoked)
     LaunchedEffect(isPermissionGranted) {
-        if (isPermissionGranted) {
-            if (backStack.contains(AppDestinations.PermissionCheck)) {
-                backStack.clear()
-                backStack.add(AppDestinations.NotificationLog)
-            }
+        destination = if (isPermissionGranted) {
+            Destination.NotificationLog
         } else {
-            if (!backStack.contains(AppDestinations.PermissionCheck)) {
-                backStack.clear()
-                backStack.add(AppDestinations.PermissionCheck)
-            }
+            Destination.PermissionCheck
         }
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) },
-        entryProvider = { key ->
-            when (key) {
-                is AppDestinations.PermissionCheck -> {
-                    NavEntry(key) {
-                        PermissionScreen(
-                            onPermissionGranted = {
-                                if (backStack.lastOrNull() != AppDestinations.NotificationLog) {
-                                    backStack.clear()
-                                    backStack.add(AppDestinations.NotificationLog)
-                                }
-                            }
-                        )
-                    }
-                }
-                is AppDestinations.NotificationLog -> {
-                    NavEntry(key) {
-                        val application = context.applicationContext as Application
-                        val viewModel: NotificationViewModel = viewModel(
-                            factory = NotificationViewModel.provideFactory(repository, application)
-                        )
-                        NotificationLogScreen(
-                            viewModel = viewModel,
-                            onNavigateToSettings = {
-                                backStack.add(AppDestinations.Settings)
-                            }
-                        )
-                    }
-                }
-                is AppDestinations.Settings -> {
-                    NavEntry(key) {
-                        val application = context.applicationContext as Application
-                        val settingsViewModel: SettingsViewModel = viewModel(
-                            factory = SettingsViewModel.provideFactory(application, repository)
-                        )
-                        SettingsScreen(
-                            viewModel = settingsViewModel,
-                            onNavigateBack = {
-                                if (backStack.size > 1) {
-                                    backStack.removeAt(backStack.size - 1)
-                                }
-                            }
-                        )
-                    }
-                }
-                else -> error("Unknown key: $key")
-            }
+    BackHandler(enabled = destination == Destination.Settings) {
+        destination = Destination.NotificationLog
+    }
+
+    when (destination) {
+        Destination.PermissionCheck -> PermissionScreen(
+            onPermissionGranted = { destination = Destination.NotificationLog }
+        )
+
+        Destination.NotificationLog -> {
+            val application = context.applicationContext as Application
+            val notificationViewModel: NotificationViewModel = viewModel(
+                factory = NotificationViewModel.provideFactory(repository, application)
+            )
+            NotificationLogScreen(
+                viewModel = notificationViewModel,
+                onNavigateToSettings = { destination = Destination.Settings }
+            )
         }
-    )
+
+        Destination.Settings -> {
+            val application = context.applicationContext as Application
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModel.provideFactory(application, repository)
+            )
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onNavigateBack = { destination = Destination.NotificationLog }
+            )
+        }
+    }
 }

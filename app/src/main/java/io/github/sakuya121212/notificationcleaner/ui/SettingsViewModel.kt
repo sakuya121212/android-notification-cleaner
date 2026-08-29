@@ -7,6 +7,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.sakuya121212.notificationcleaner.data.NotificationRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,11 +104,8 @@ class SettingsViewModel(
         fun provideFactory(
             application: Application,
             repository: NotificationRepository
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return SettingsViewModel(application, repository) as T
-            }
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer { SettingsViewModel(application, repository) }
         }
     }
 }
