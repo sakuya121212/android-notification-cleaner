@@ -181,12 +181,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         }
 
         val latestPostTime = summary.latestPostTime ?: return
-        val lastNotificationText = NotificationAgeFormatter.format(
-            postTimeMillis = latestPostTime,
-            nowMillis = System.currentTimeMillis()
-        )
 
-        // Both the summary and its button open the notification log.
+        // Both the notification and its button open the notification log.
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -203,21 +199,24 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         val displayedIcons = summary.previewPackageNames.mapNotNull(::applicationIconBitmap)
 
         val compactRemoteViews = RemoteViews(packageName, R.layout.notification_summary_compact).apply {
-            setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
-            setTextViewText(R.id.notification_last_time_text, "最後の通知: $lastNotificationText")
+            setTextViewText(R.id.notification_count_text, getString(R.string.summary_notification_count, count))
+        }
+
+        val expandedRemoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
+            setTextViewText(R.id.notification_count_text, getString(R.string.summary_notification_count, count))
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
             bindPreviewIcons(this, displayedIcons, summary.hasMoreApps)
         }
 
         val summaryNotification = NotificationCompat.Builder(this, SUMMARY_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_cleaner_bell)
-            .setContentTitle(getString(R.string.summary_notification_title))
-            .setContentText("集約された通知: $count ・ 最後の通知: $lastNotificationText")
+            .setContentText(getString(R.string.summary_notification_count, count))
             .setNumber(count)
             .setWhen(latestPostTime)
             .setShowWhen(true)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(compactRemoteViews)
+            .setCustomBigContentView(expandedRemoteViews)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
