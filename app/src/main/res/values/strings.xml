@@ -2,7 +2,7 @@
     <string name="app_name">NotificationCleaner</string>
     <string name="notification_channel_name">NotificationCleaner</string>
     <string name="notification_channel_description">通知をまとめて表示します</string>
-    <string name="summary_notification_title">Notification Cleaner</string>
+    <string name="summary_notification_title">NotificationCleaner</string>
     <string name="summary_notification_icon_description">通知クリーナー</string>
     <string name="summary_notification_count_default">クリーンした通知: 0件</string>
     <string name="summary_notification_count">クリーンした通知: %1$d件</string>

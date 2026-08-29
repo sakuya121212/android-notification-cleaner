@@ -165,7 +165,10 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val summaryRows = repository.getCleanNotificationSummary(previewLimit = 3)
+        // Read all retained rows so the preview can represent distinct source apps.
+        // Limiting the query to the number of icon slots would show duplicates when
+        // several recent notifications came from the same app.
+        val summaryRows = repository.getCleanNotificationSummary(previewLimit = maxHistoryEntries)
         val count = summaryRows.firstOrNull()?.totalCount ?: 0
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -195,10 +198,15 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         // Use the newest source app as the primary icon. Android only permits one
         // large icon on a notification, while the custom view below previews up to
         // three of the apps represented in the aggregated notifications.
-        val previewIcons = recentNotificationPreviews.mapNotNull { notification ->
-            applicationIconBitmap(notification.packageName)
+        val previewIcons = recentNotificationPreviews
+            .distinctBy { it.packageName }
+            .mapNotNull { notification -> applicationIconBitmap(notification.packageName) }
+        val displayedIcons = previewIcons.take(MAX_SUMMARY_APP_ICONS)
+
+        val compactRemoteViews = RemoteViews(packageName, R.layout.notification_summary_compact).apply {
+            setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
+            bindPreviewIcons(this, displayedIcons, previewIcons.size > MAX_SUMMARY_APP_ICONS)
         }
-        val primaryIcon = previewIcons.firstOrNull()
 
         val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
             setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
@@ -206,27 +214,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             setTextViewText(R.id.notification_last_time_text, "最後の通知: $lastNotificationText")
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
 
-            primaryIcon?.let { icon ->
-                // This is the icon shown at the leading edge of the collapsed
-                // summary notification.
-                setImageViewBitmap(R.id.notification_app_icon, icon)
-            }
-
-            // Reset icon preview visibilities
-            setViewVisibility(R.id.icon_preview_1, View.GONE)
-            setViewVisibility(R.id.icon_preview_2, View.GONE)
-            setViewVisibility(R.id.icon_preview_3, View.GONE)
-            setViewVisibility(R.id.icon_preview_more, View.GONE)
-
-            val iconViewIds = listOf(R.id.icon_preview_1, R.id.icon_preview_2, R.id.icon_preview_3)
-            previewIcons.take(iconViewIds.size).forEachIndexed { index, icon ->
-                setImageViewBitmap(iconViewIds[index], icon)
-                setViewVisibility(iconViewIds[index], View.VISIBLE)
-            }
-
-            if (count > 3) {
-                setViewVisibility(R.id.icon_preview_more, View.VISIBLE)
-            }
+            bindPreviewIcons(this, displayedIcons, previewIcons.size > MAX_SUMMARY_APP_ICONS)
         }
 
         val summaryNotification = NotificationCompat.Builder(this, channelId)
@@ -237,9 +225,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             .setWhen(latestPostTime)
             .setShowWhen(true)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(remoteViews)
+            .setCustomContentView(compactRemoteViews)
             .setCustomBigContentView(remoteViews)
-            .setLargeIcon(primaryIcon)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -250,6 +237,21 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         } catch (e: SecurityException) {
             Log.e(TAG, "Failed to post notification due to security exception", e)
         }
+    }
+
+    private fun bindPreviewIcons(
+        remoteViews: RemoteViews,
+        icons: List<Bitmap>,
+        hasMore: Boolean
+    ) {
+        val iconViewIds = intArrayOf(R.id.icon_preview_1, R.id.icon_preview_2, R.id.icon_preview_3)
+        iconViewIds.forEach { remoteViews.setViewVisibility(it, View.GONE) }
+        remoteViews.setViewVisibility(R.id.icon_preview_more, View.GONE)
+        icons.forEachIndexed { index, icon ->
+            remoteViews.setImageViewBitmap(iconViewIds[index], icon)
+            remoteViews.setViewVisibility(iconViewIds[index], View.VISIBLE)
+        }
+        if (hasMore) remoteViews.setViewVisibility(R.id.icon_preview_more, View.VISIBLE)
     }
 
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
@@ -302,6 +304,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "CleanerNotificationListener"
         const val SUMMARY_NOTIFICATION_ID = 1001
+        private const val MAX_SUMMARY_APP_ICONS = 3
         private const val MAX_RETAINED_CONTENT_INTENTS = 500
         // This cache deliberately has process-local lifetime. PendingIntent cannot be
         // persisted safely, and callers fall back to launching the source app after a restart.
