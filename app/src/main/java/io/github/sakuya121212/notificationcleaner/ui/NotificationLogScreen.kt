@@ -2,6 +2,7 @@ package io.github.sakuya121212.notificationcleaner.ui
 
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.util.LruCache
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -91,6 +92,8 @@ fun NotificationListPane(
     onNavigateToSettings: () -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
+    val groupedNotifications = remember(notifications) { notifications.groupBy { it.packageName } }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -253,7 +256,7 @@ fun NotificationListPane(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                notifications.groupBy { it.packageName }.forEach { (packageName, appNotifications) ->
+                groupedNotifications.forEach { (packageName, appNotifications) ->
                     item(key = "header_$packageName") {
                         NotificationAppGroupHeader(appNotifications.first(), appNotifications.size)
                     }
@@ -429,12 +432,15 @@ fun NotificationCardItem(
 @Composable
 fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var iconDrawable by remember(packageName) { mutableStateOf<Drawable?>(null) }
+    var iconDrawable by remember(packageName) { mutableStateOf(appIconCache[packageName]) }
 
     LaunchedEffect(packageName) {
+        if (iconDrawable != null) return@LaunchedEffect
         iconDrawable = withContext(Dispatchers.IO) {
             try {
-                context.packageManager.getApplicationIcon(packageName)
+                context.packageManager.getApplicationIcon(packageName).also {
+                    appIconCache.put(packageName, it)
+                }
             } catch (_: PackageManager.NameNotFoundException) {
                 null
             }
@@ -464,6 +470,8 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
         }
     }
 }
+
+private val appIconCache = LruCache<String, Drawable>(64)
 
 
 @Composable

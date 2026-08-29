@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [NotificationEntity::class, AppFilterEntity::class], version = 5, exportSchema = true)
+@Database(entities = [NotificationEntity::class, AppFilterEntity::class], version = 6, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun appFilterDao(): AppFilterDao
@@ -23,7 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "notification_database"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     // Versions 1 and 2 predate the schema retained in this source tree.
                     // Recreate only those unknown schemas rather than crashing on upgrade.
                     .fallbackToDestructiveMigrationFrom(1, 2)
@@ -57,6 +57,13 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE notifications")
                 db.execSQL("ALTER TABLE notifications_new RENAME TO notifications")
                 db.execSQL("CREATE UNIQUE INDEX index_notifications_key ON notifications(`key`)")
+            }
+        }
+        /** Adds indexes used by history trimming, grouping, and package deletion. */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notifications_packageName ON notifications(packageName)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notifications_postTime ON notifications(postTime)")
             }
         }
     }

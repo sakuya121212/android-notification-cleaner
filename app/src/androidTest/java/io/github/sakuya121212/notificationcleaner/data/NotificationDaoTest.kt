@@ -58,18 +58,20 @@ class NotificationDaoTest {
     }
 
     @Test
-    fun cleanSummary_joinsEnabledFiltersAndReturnsTotalWithPreviews() = runBlocking {
+    fun cleanSummary_joinsEnabledFiltersAndReturnsDistinctRecentApps() = runBlocking {
         appFilterDao.insert(AppFilterEntity("enabled", isCleanEnabled = true))
+        appFilterDao.insert(AppFilterEntity("also-enabled", isCleanEnabled = true))
         appFilterDao.insert(AppFilterEntity("disabled", isCleanEnabled = false))
         insert("old", packageName = "enabled", postTime = 1)
         insert("new", packageName = "enabled", postTime = 2)
+        insert("newest", packageName = "also-enabled", postTime = 4)
         insert("hidden", packageName = "disabled", postTime = 3)
 
         val rows = notificationDao.getCleanNotificationSummary(previewLimit = 1)
-        assertEquals(1, rows.size)
-        assertEquals("new", rows.single().notification.key)
-        assertEquals(2, rows.single().totalCount)
-        assertTrue(rows.none { it.notification.key == "hidden" })
+        assertEquals(3, rows.totalCount)
+        assertEquals(4L, rows.latestPostTime)
+        assertEquals(listOf("also-enabled"), rows.previewPackageNames)
+        assertTrue(rows.hasMoreApps)
     }
 
     private suspend fun insert(

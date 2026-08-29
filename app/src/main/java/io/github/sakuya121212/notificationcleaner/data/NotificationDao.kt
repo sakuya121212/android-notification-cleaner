@@ -2,15 +2,22 @@ package io.github.sakuya121212.notificationcleaner.data
 
 import androidx.room.Dao
 import androidx.room.Delete
-import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
-data class NotificationSummaryRow(
-    @Embedded val notification: NotificationEntity,
-    val totalCount: Int
+data class NotificationSummaryStats(
+    val totalCount: Int,
+    val latestPostTime: Long?
+)
+
+data class NotificationSummary(
+    val totalCount: Int,
+    val latestPostTime: Long?,
+    val previewPackageNames: List<String>,
+    val hasMoreApps: Boolean
 )
 
 @Dao
@@ -42,21 +49,47 @@ interface NotificationDao {
     @Query("DELETE FROM notifications")
     suspend fun deleteAll()
 
+    @Transaction
+    suspend fun insertAndTrim(notification: NotificationEntity, cutoffTime: Long, maxEntries: Int): Long {
+        val existing = findByKey(notification.key)
+        val id = insert(notification.copy(id = existing?.id ?: notification.id))
+        deleteOlderThan(cutoffTime)
+        deleteExceedingLimit(maxEntries)
+        return id
+    }
+
     @Query(
         """
-        SELECT n.*, (
-            SELECT COUNT(*)
-            FROM notifications AS count_notifications
-            INNER JOIN app_filters AS count_filters
-                ON count_filters.packageName = count_notifications.packageName
-            WHERE count_filters.isCleanEnabled = 1
-        ) AS totalCount
+        SELECT COUNT(*) AS totalCount, MAX(n.postTime) AS latestPostTime
         FROM notifications AS n
         INNER JOIN app_filters AS filters ON filters.packageName = n.packageName
         WHERE filters.isCleanEnabled = 1
-        ORDER BY n.postTime DESC
-        LIMIT :previewLimit
         """
     )
-    suspend fun getCleanNotificationSummary(previewLimit: Int): List<NotificationSummaryRow>
+    suspend fun getCleanNotificationSummaryStats(): NotificationSummaryStats
+
+    @Query(
+        """
+        SELECT n.packageName
+        FROM notifications AS n
+        INNER JOIN app_filters AS filters ON filters.packageName = n.packageName
+        WHERE filters.isCleanEnabled = 1
+        GROUP BY n.packageName
+        ORDER BY MAX(n.postTime) DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecentCleanPackageNames(limit: Int): List<String>
+
+    @Transaction
+    suspend fun getCleanNotificationSummary(previewLimit: Int): NotificationSummary {
+        val stats = getCleanNotificationSummaryStats()
+        val packageNames = getRecentCleanPackageNames(previewLimit + 1)
+        return NotificationSummary(
+            totalCount = stats.totalCount,
+            latestPostTime = stats.latestPostTime,
+            previewPackageNames = packageNames.take(previewLimit),
+            hasMoreApps = packageNames.size > previewLimit
+        )
+    }
 }

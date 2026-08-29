@@ -16,6 +16,7 @@ import android.graphics.drawable.Drawable
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import android.util.LruCache
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -27,6 +28,7 @@ import io.github.sakuya121212.notificationcleaner.data.NotificationEntity
 import io.github.sakuya121212.notificationcleaner.data.NotificationRepository
 import io.github.sakuya121212.notificationcleaner.data.NotificationRepositoryImpl
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import java.util.Collections
 import java.util.LinkedHashMap
 
@@ -37,6 +39,11 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         val database = AppDatabase.getDatabase(this)
         NotificationRepositoryImpl(database.notificationDao(), database.appFilterDao())
     }
+    private val summaryUpdateRequests = Channel<Unit>(Channel.CONFLATED)
+    private val appNameCache = LruCache<String, String>(64)
+    private val appIconCache = object : LruCache<String, Bitmap>(2 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    }
 
     private val historyRetentionMillis = 30L * 24 * 60 * 60 * 1000
     private val maxHistoryEntries = 500
@@ -46,11 +53,19 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         super.onCreate()
         createNotificationChannel()
 
+        serviceScope.launch {
+            for (ignored in summaryUpdateRequests) {
+                delay(SUMMARY_UPDATE_DEBOUNCE_MILLIS)
+                while (summaryUpdateRequests.tryReceive().isSuccess) Unit
+                updateSummaryNotification()
+            }
+        }
+
         // Settings are stored in Room. Observing them here updates the summary
         // immediately even while the activity is not on screen.
         serviceScope.launch {
             repository.allAppFilters.collect {
-                updateSummaryNotification()
+                requestSummaryUpdate()
             }
         }
 
@@ -59,13 +74,14 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         serviceScope.launch {
             while (isActive) {
                 delay(summaryRefreshIntervalMillis)
-                updateSummaryNotification()
+                requestSummaryUpdate()
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        summaryUpdateRequests.close()
         serviceScope.cancel()
     }
 
@@ -78,7 +94,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             activeNotifications.orEmpty().forEach { notification ->
                 processNotification(notification)
             }
-            updateSummaryNotification()
+            requestSummaryUpdate()
         }
     }
 
@@ -118,17 +134,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         val postTime = sbn.postTime
         val notificationKey = sbn.key
 
-        val appName = try {
-            val appInfo = packageManager.getApplicationInfo(packageName, 0)
-            packageManager.getApplicationLabel(appInfo).toString()
-        } catch (_: PackageManager.NameNotFoundException) {
-            null
-        }
-
-
-        val existing = repository.findByKey(notificationKey)
+        val appName = applicationName(packageName)
         val entity = NotificationEntity(
-            id = existing?.id ?: 0,
             packageName = packageName,
             appName = appName,
             title = title,
@@ -136,7 +143,11 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             postTime = postTime,
             key = notificationKey
         )
-        repository.insert(entity)
+        repository.insertAndTrim(
+            notification = entity,
+            cutoffTime = System.currentTimeMillis() - historyRetentionMillis,
+            maxEntries = maxHistoryEntries
+        )
 
         // Save first: if Room is unavailable, leave the source notification intact.
         // Retain the original action while this process is alive so tapping an
@@ -146,11 +157,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
 
         // Intercept only after its replacement has been persisted.
         cancelNotification(notificationKey)
-        repository.trimHistory(
-            cutoffTime = System.currentTimeMillis() - historyRetentionMillis,
-            maxEntries = maxHistoryEntries
-        )
-        updateSummaryNotification()
+        requestSummaryUpdate()
     }
 
     private fun shouldSkipNotification(sbn: StatusBarNotification): Boolean {
@@ -164,11 +171,8 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        // Read all retained rows so the preview can represent distinct source apps.
-        // Limiting the query to the number of icon slots would show duplicates when
-        // several recent notifications came from the same app.
-        val summaryRows = repository.getCleanNotificationSummary(previewLimit = maxHistoryEntries)
-        val count = summaryRows.firstOrNull()?.totalCount ?: 0
+        val summary = repository.getCleanNotificationSummary(previewLimit = MAX_SUMMARY_APP_ICONS)
+        val count = summary.totalCount
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         if (count == 0) {
@@ -176,8 +180,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val recentNotificationPreviews = summaryRows.map { it.notification }
-        val latestPostTime = recentNotificationPreviews.maxOf { it.postTime }
+        val latestPostTime = summary.latestPostTime ?: return
         val lastNotificationText = NotificationAgeFormatter.format(
             postTimeMillis = latestPostTime,
             nowMillis = System.currentTimeMillis()
@@ -197,23 +200,13 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         // Use the newest source app as the primary icon. Android only permits one
         // large icon on a notification, while the custom view below previews up to
         // three of the apps represented in the aggregated notifications.
-        val previewIcons = recentNotificationPreviews
-            .distinctBy { it.packageName }
-            .mapNotNull { notification -> applicationIconBitmap(notification.packageName) }
-        val displayedIcons = previewIcons.take(MAX_SUMMARY_APP_ICONS)
+        val displayedIcons = summary.previewPackageNames.mapNotNull(::applicationIconBitmap)
 
         val compactRemoteViews = RemoteViews(packageName, R.layout.notification_summary_compact).apply {
             setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
-            bindPreviewIcons(this, displayedIcons, previewIcons.size > MAX_SUMMARY_APP_ICONS)
-        }
-
-        val remoteViews = RemoteViews(packageName, R.layout.notification_summary).apply {
-            setTextViewText(R.id.notification_title, getString(R.string.summary_notification_title))
-            setTextViewText(R.id.notification_count_text, getString(R.string.summary_notification_count, count))
             setTextViewText(R.id.notification_last_time_text, "最後の通知: $lastNotificationText")
             setOnClickPendingIntent(R.id.btn_clean, pendingIntent)
-
-            bindPreviewIcons(this, displayedIcons, previewIcons.size > MAX_SUMMARY_APP_ICONS)
+            bindPreviewIcons(this, displayedIcons, summary.hasMoreApps)
         }
 
         val summaryNotification = NotificationCompat.Builder(this, SUMMARY_NOTIFICATION_CHANNEL_ID)
@@ -225,7 +218,6 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             .setShowWhen(true)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(compactRemoteViews)
-            .setCustomBigContentView(remoteViews)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -235,6 +227,22 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             notificationManager.notify(SUMMARY_NOTIFICATION_ID, summaryNotification)
         } catch (e: SecurityException) {
             Log.e(TAG, "Failed to post notification due to security exception", e)
+        }
+    }
+
+    private fun requestSummaryUpdate() {
+        summaryUpdateRequests.trySend(Unit)
+    }
+
+    private fun applicationName(packageName: String): String? {
+        appNameCache[packageName]?.let { return it }
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(appInfo).toString().also {
+                appNameCache.put(packageName, it)
+            }
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
         }
     }
 
@@ -266,13 +274,18 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         return bitmap
     }
 
-    private fun applicationIconBitmap(packageName: String): Bitmap? = try {
-        drawableToBitmap(packageManager.getApplicationIcon(packageName))
-    } catch (_: PackageManager.NameNotFoundException) {
-        null
-    } catch (_: RuntimeException) {
-        // A package can disappear while its retained notification is still in Room.
-        null
+    private fun applicationIconBitmap(packageName: String): Bitmap? {
+        appIconCache[packageName]?.let { return it }
+        return try {
+            drawableToBitmap(packageManager.getApplicationIcon(packageName)).also {
+                appIconCache.put(packageName, it)
+            }
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        } catch (_: RuntimeException) {
+            // A package can disappear while its retained notification is still in Room.
+            null
+        }
     }
 
     private fun createNotificationChannel() {
@@ -307,6 +320,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
         const val SUMMARY_NOTIFICATION_CHANNEL_ID = "cleaner_channel"
         const val SUMMARY_NOTIFICATION_ID = 1001
         private const val MAX_SUMMARY_APP_ICONS = 3
+        private const val SUMMARY_UPDATE_DEBOUNCE_MILLIS = 100L
         private const val MAX_RETAINED_CONTENT_INTENTS = 500
         // This cache deliberately has process-local lifetime. PendingIntent cannot be
         // persisted safely, and callers fall back to launching the source app after a restart.

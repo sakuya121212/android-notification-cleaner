@@ -9,7 +9,11 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 @Entity(
     tableName = "notifications",
-    indices = [Index(value = ["key"], unique = true)]
+    indices = [
+        Index(value = ["key"], unique = true),
+        Index(value = ["packageName"]),
+        Index(value = ["postTime"])
+    ]
 )
 data class NotificationEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

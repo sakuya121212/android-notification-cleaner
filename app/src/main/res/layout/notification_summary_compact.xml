@@ -8,53 +8,77 @@
     android:paddingEnd="12dp">
 
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="10dp"
-        android:contentDescription="@string/summary_notification_icon_description"
-        android:src="@drawable/ic_cleaner_bell" />
-
-    <TextView
-        android:id="@+id/notification_title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="@string/summary_notification_title"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-
-    <ImageView
         android:id="@+id/icon_preview_1"
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:visibility="gone" />
 
     <ImageView
         android:id="@+id/icon_preview_2"
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:visibility="gone" />
 
     <ImageView
         android:id="@+id/icon_preview_3"
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:visibility="gone" />
 
     <TextView
         android:id="@+id/icon_preview_more"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="3dp"
+        android:layout_marginEnd="4dp"
         android:text="…"
         android:textColor="?android:attr/textColorSecondary"
-        android:textSize="14sp"
+        android:textSize="12sp"
         android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/notification_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/summary_notification_title"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/notification_last_time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/btn_clean"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_clean_button"
+        android:gravity="center"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:text="@string/action_open"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
 </LinearLayout>

@@ -3,7 +3,7 @@ package io.github.sakuya121212.notificationcleaner
 import io.github.sakuya121212.notificationcleaner.data.AppFilterEntity
 import io.github.sakuya121212.notificationcleaner.data.NotificationEntity
 import io.github.sakuya121212.notificationcleaner.data.NotificationRepository
-import io.github.sakuya121212.notificationcleaner.data.NotificationSummaryRow
+import io.github.sakuya121212.notificationcleaner.data.NotificationSummary
 import io.github.sakuya121212.notificationcleaner.ui.NotificationViewModel
 import io.github.sakuya121212.notificationcleaner.ui.formatTimestamp
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +43,16 @@ class FakeNotificationRepository : NotificationRepository {
         return id
     }
 
+    override suspend fun insertAndTrim(
+        notification: NotificationEntity,
+        cutoffTime: Long,
+        maxEntries: Int
+    ): Long {
+        val id = insert(notification)
+        trimHistory(cutoffTime, maxEntries)
+        return id
+    }
+
     override suspend fun delete(notification: NotificationEntity) {
         items.removeAll { it.id == notification.id }
         flow.value = items.toList()
@@ -71,11 +81,16 @@ class FakeNotificationRepository : NotificationRepository {
         flow.value = items.toList()
     }
 
-    override suspend fun getCleanNotificationSummary(previewLimit: Int): List<NotificationSummaryRow> {
+    override suspend fun getCleanNotificationSummary(previewLimit: Int): NotificationSummary {
         val enabledItems = items.filter { filters[it.packageName] ?: false }
             .sortedByDescending { it.postTime }
-        val count = enabledItems.size
-        return enabledItems.take(previewLimit).map { NotificationSummaryRow(it, count) }
+        val packages = enabledItems.distinctBy { it.packageName }.map { it.packageName }
+        return NotificationSummary(
+            totalCount = enabledItems.size,
+            latestPostTime = enabledItems.firstOrNull()?.postTime,
+            previewPackageNames = packages.take(previewLimit),
+            hasMoreApps = packages.size > previewLimit
+        )
     }
 
     override suspend fun isCleanEnabledForPackage(packageName: String): Boolean {

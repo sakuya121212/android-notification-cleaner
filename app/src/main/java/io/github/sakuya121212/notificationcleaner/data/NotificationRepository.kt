@@ -7,13 +7,14 @@ interface NotificationRepository {
     val allAppFilters: Flow<List<AppFilterEntity>>
 
     suspend fun insert(notification: NotificationEntity): Long
+    suspend fun insertAndTrim(notification: NotificationEntity, cutoffTime: Long, maxEntries: Int): Long
     suspend fun delete(notification: NotificationEntity)
     suspend fun deleteAll()
     suspend fun getCount(): Int
     suspend fun findByKey(key: String): NotificationEntity?
     suspend fun deleteByPackageName(packageName: String)
     suspend fun trimHistory(cutoffTime: Long, maxEntries: Int)
-    suspend fun getCleanNotificationSummary(previewLimit: Int): List<NotificationSummaryRow>
+    suspend fun getCleanNotificationSummary(previewLimit: Int): NotificationSummary
 
     suspend fun isCleanEnabledForPackage(packageName: String): Boolean
     suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean)
@@ -28,6 +29,9 @@ class NotificationRepositoryImpl(
     override val allAppFilters: Flow<List<AppFilterEntity>> = appFilterDao.getAll()
 
     override suspend fun insert(notification: NotificationEntity) = notificationDao.insert(notification)
+
+    override suspend fun insertAndTrim(notification: NotificationEntity, cutoffTime: Long, maxEntries: Int) =
+        notificationDao.insertAndTrim(notification, cutoffTime, maxEntries)
 
     override suspend fun delete(notification: NotificationEntity) = notificationDao.delete(notification)
 
