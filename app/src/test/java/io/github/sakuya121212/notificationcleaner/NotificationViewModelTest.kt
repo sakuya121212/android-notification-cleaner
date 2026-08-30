@@ -43,14 +43,15 @@ class FakeNotificationRepository : NotificationRepository {
         return id
     }
 
-    override suspend fun insertAndTrim(
+    override suspend fun insertIfCleanEnabledAndTrim(
         notification: NotificationEntity,
         cutoffTime: Long,
         maxEntries: Int
-    ): Long {
-        val id = insert(notification)
+    ): Boolean {
+        if (filters[notification.packageName] != true) return false
+        insert(notification)
         trimHistory(cutoffTime, maxEntries)
-        return id
+        return true
     }
 
     override suspend fun delete(notification: NotificationEntity) {

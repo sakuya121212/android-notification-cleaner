@@ -1,13 +1,18 @@
 package io.github.sakuya121212.notificationcleaner.data
 
 import kotlinx.coroutines.flow.Flow
+import androidx.room.withTransaction
 
 interface NotificationRepository {
     val allNotifications: Flow<List<NotificationEntity>>
     val allAppFilters: Flow<List<AppFilterEntity>>
 
     suspend fun insert(notification: NotificationEntity): Long
-    suspend fun insertAndTrim(notification: NotificationEntity, cutoffTime: Long, maxEntries: Int): Long
+    suspend fun insertIfCleanEnabledAndTrim(
+        notification: NotificationEntity,
+        cutoffTime: Long,
+        maxEntries: Int
+    ): Boolean
     suspend fun delete(notification: NotificationEntity)
     suspend fun deleteAll()
     suspend fun getCount(): Int
@@ -22,16 +27,24 @@ interface NotificationRepository {
 }
 
 class NotificationRepositoryImpl(
-    private val notificationDao: NotificationDao,
-    private val appFilterDao: AppFilterDao
+    private val database: AppDatabase
 ) : NotificationRepository {
+    private val notificationDao = database.notificationDao()
+    private val appFilterDao = database.appFilterDao()
     override val allNotifications: Flow<List<NotificationEntity>> = notificationDao.getAll()
     override val allAppFilters: Flow<List<AppFilterEntity>> = appFilterDao.getAll()
 
     override suspend fun insert(notification: NotificationEntity) = notificationDao.insert(notification)
 
-    override suspend fun insertAndTrim(notification: NotificationEntity, cutoffTime: Long, maxEntries: Int) =
+    override suspend fun insertIfCleanEnabledAndTrim(
+        notification: NotificationEntity,
+        cutoffTime: Long,
+        maxEntries: Int
+    ) = database.withTransaction {
+        if (appFilterDao.isCleanEnabled(notification.packageName) != true) return@withTransaction false
         notificationDao.insertAndTrim(notification, cutoffTime, maxEntries)
+        true
+    }
 
     override suspend fun delete(notification: NotificationEntity) = notificationDao.delete(notification)
 
@@ -57,18 +70,22 @@ class NotificationRepositoryImpl(
     }
 
     override suspend fun setCleanEnabled(packageName: String, isEnabled: Boolean) {
-        appFilterDao.insert(AppFilterEntity(packageName = packageName, isCleanEnabled = isEnabled))
-        if (!isEnabled) {
-            // Disabling an app also removes any previously retained private content.
-            notificationDao.deleteByPackageName(packageName)
+        database.withTransaction {
+            appFilterDao.insert(AppFilterEntity(packageName = packageName, isCleanEnabled = isEnabled))
+            if (!isEnabled) {
+                // Disabling an app also removes any previously retained private content.
+                notificationDao.deleteByPackageName(packageName)
+            }
         }
     }
 
     override suspend fun setAllCleanEnabled(packageNames: List<String>, isEnabled: Boolean) {
-        val filters = packageNames.map { AppFilterEntity(packageName = it, isCleanEnabled = isEnabled) }
-        appFilterDao.insertAll(filters)
-        if (!isEnabled) {
-            notificationDao.deleteAll()
+        database.withTransaction {
+            val filters = packageNames.map { AppFilterEntity(packageName = it, isCleanEnabled = isEnabled) }
+            appFilterDao.insertAll(filters)
+            if (!isEnabled) {
+                notificationDao.deleteAll()
+            }
         }
     }
 }

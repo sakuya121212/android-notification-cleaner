@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val database = AppDatabase.getDatabase(this)
-        val repository = NotificationRepositoryImpl(database.notificationDao(), database.appFilterDao())
+        val repository = NotificationRepositoryImpl(database)
 
         setContent {
             NotificationCleanerTheme {

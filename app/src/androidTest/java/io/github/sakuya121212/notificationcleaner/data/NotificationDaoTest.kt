@@ -74,6 +74,25 @@ class NotificationDaoTest {
         assertTrue(rows.hasMoreApps)
     }
 
+    @Test
+    fun repository_onlyStoresNotificationsWhileCleaningIsEnabled() = runBlocking {
+        val repository = NotificationRepositoryImpl(database)
+        val notification = NotificationEntity(
+            packageName = "target",
+            title = null,
+            text = null,
+            postTime = 1,
+            key = "target-key"
+        )
+
+        assertTrue(!repository.insertIfCleanEnabledAndTrim(notification, 0, 500))
+        repository.setCleanEnabled("target", true)
+        assertTrue(repository.insertIfCleanEnabledAndTrim(notification, 0, 500))
+        repository.setCleanEnabled("target", false)
+
+        assertEquals(0, notificationDao.getCount())
+    }
+
     private suspend fun insert(
         key: String,
         packageName: String = "enabled",

@@ -37,7 +37,7 @@ class CleanerNotificationListenerService : NotificationListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val repository: NotificationRepository by lazy {
         val database = AppDatabase.getDatabase(this)
-        NotificationRepositoryImpl(database.notificationDao(), database.appFilterDao())
+        NotificationRepositoryImpl(database)
     }
     private val summaryUpdateRequests = Channel<Unit>(Channel.CONFLATED)
     private val appNameCache = LruCache<String, String>(64)
@@ -122,11 +122,6 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        if (!repository.isCleanEnabledForPackage(packageName)) {
-            Log.d(TAG, "Auto-clean disabled for $packageName, skipping.")
-            return
-        }
-
         val extras = sbn.notification.extras
         val title = extras.getString("android.title")
             ?: extras.getCharSequence("android.title")?.toString()
@@ -143,11 +138,15 @@ class CleanerNotificationListenerService : NotificationListenerService() {
             postTime = postTime,
             key = notificationKey
         )
-        repository.insertAndTrim(
+        val wasSaved = repository.insertIfCleanEnabledAndTrim(
             notification = entity,
             cutoffTime = System.currentTimeMillis() - historyRetentionMillis,
             maxEntries = maxHistoryEntries
         )
+        if (!wasSaved) {
+            Log.d(TAG, "Auto-clean disabled for $packageName, skipping.")
+            return
+        }
 
         // Save first: if Room is unavailable, leave the source notification intact.
         // Retain the original action while this process is alive so tapping an
